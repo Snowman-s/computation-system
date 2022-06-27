@@ -28,6 +28,19 @@ describe('TMTape', function() {
     tape.write(-9, B)
     expect(tape.read(-9)).toEqual(B)
   })
+  it('ToStringTest', () => {
+    let [A, B, Blank]: TMSymbol[] = ['A', 'B', 'S']
+    let tape = TMTape.create([A, A, A, A], Blank)
+
+    expect(tape.toString()).toEqual('…SAAAAS…')
+    tape.write(1, B)
+    expect(tape.toString()).toEqual('…SABAAS…')
+    tape.write(5, B)
+    expect(tape.toString()).toEqual('…SABAASBS…')
+    tape.write(-2, B)
+    expect(tape.toString()).toEqual('…SBSABAASBS…')
+    expect(`${tape}`).toEqual('…SBSABAASBS…')
+  })
 })
 
 describe('TMRule', () => {

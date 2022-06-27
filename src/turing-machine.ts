@@ -110,9 +110,19 @@ export class TMTape {
   private readonly data: Map<number, TMSymbol>
   private readonly blank: TMSymbol
 
-  private constructor(data: Map<number, TMSymbol>, blank: TMSymbol) {
+  private minIndex: number
+  private maxIndex: number
+
+  private constructor(
+    data: Map<number, TMSymbol>,
+    blank: TMSymbol,
+    minIndex: number,
+    maxIndex: number
+  ) {
     this.data = data
     this.blank = blank
+    this.minIndex = minIndex
+    this.maxIndex = maxIndex
   }
 
   public static create(symbols: TMSymbol[], blank: TMSymbol) {
@@ -120,15 +130,27 @@ export class TMTape {
     symbols.forEach((symbol, i) => {
       tapeData.set(i, symbol)
     })
-    return new TMTape(tapeData, blank)
+    return new TMTape(tapeData, blank, 0, tapeData.size - 1)
   }
 
-  read(n: number) {
+  public read(n: number) {
     return this.data.has(n) ? this.data.get(n)!! : this.blank
   }
 
-  write(n: number, symbol: TMSymbol) {
+  public write(n: number, symbol: TMSymbol) {
+    this.minIndex = Math.min(n, this.minIndex)
+    this.maxIndex = Math.max(n, this.maxIndex)
+
     return this.data.set(n, symbol)
+  }
+
+  public toString() {
+    let str = '…' + this.blank
+    for (let index = this.minIndex; index <= this.maxIndex; index++) {
+      str += this.data.get(index) ?? this.blank
+    }
+
+    return str + this.blank + '…'
   }
 }
 
