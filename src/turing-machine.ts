@@ -48,6 +48,22 @@ export class TMRuleSet {
       .filter(rule => rule.nowState == state && rule.read == nowSymbol)
       .map(rule => rule.out)
   }
+
+  public toString() {
+    return (
+      '[' +
+      this.rules
+        .map(rule => {
+          if (rule.out.move === TMMoveAndHALT.HALT) {
+            return `${rule.nowState} ${rule.read}  ―`
+          } else {
+            return `${rule.nowState} ${rule.read}${rule.out.write} ${rule.out.move[0]}${rule.out.nextState}`
+          }
+        })
+        .join(', ') +
+      ']'
+    )
+  }
 }
 
 export class TMRuleSetBuilder {

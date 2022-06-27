@@ -114,6 +114,19 @@ describe('TMRule', () => {
       move: TMMoveAndHALT.HALT
     })
   })
+  it('ToStringTest', () => {
+    let [A, B]: TMSymbol[] = ['A', 'B']
+    let [q1, q2]: TMState[] = ['q1', 'q2']
+    const ruleset = TMRuleSet.builder()
+      .state(q1)
+      .add(A, B, TMMove.RIGHT)
+      .state(q2)
+      .add(B, B, TMMove.RIGHT, q1)
+      .addHALT(A)
+      .build()
+
+    expect(ruleset.toString()).toEqual('[q1 AB Rq1, q2 BB Rq1, q2 A  ―]')
+  })
 })
 
 describe('TuringMachine', function() {
