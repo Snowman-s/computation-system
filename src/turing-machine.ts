@@ -4,16 +4,33 @@ export type TMSymbol = string
 export const TMMove = {
   LEFT: 'LEFT',
   RIGHT: 'RIGHT',
-  CENTER: 'CENTER',
-  HALT: 'HALT'
+  CENTER: 'CENTER'
 } as const
+
+export const TMMoveAndHALT = { ...TMMove, HALT: 'HALT' } as const
 
 export type TMMove = typeof TMMove[keyof typeof TMMove]
 
 type TMRuleOutput =
   | { write: TMState; move: TMMove; nextState: TMState }
-  | { move: typeof TMMove.HALT }
+  | { move: typeof TMMoveAndHALT.HALT }
 type TMRule = { nowState: TMState; read: TMState; out: TMRuleOutput }
+
+class TMEquality {
+  static ruleEquals(a: TMRule, b: TMRule) {
+    if (a.out.move === TMMoveAndHALT.HALT) {
+      return a.nowState === b.nowState && a.read === b.read && a.out.move === b.out.move
+    } else {
+      if (a.out.move !== b.out.move) return false
+      return (
+        a.nowState === b.nowState &&
+        a.read === b.read &&
+        a.out.nextState == b.out.nextState &&
+        a.out.write == b.out.write
+      )
+    }
+  }
+}
 
 export class TMRuleSet {
   public static builder() {
@@ -22,8 +39,8 @@ export class TMRuleSet {
 
   private rules: TMRule[] = []
 
-  constructor(builder: TMRuleSetBuilder) {
-    this.rules = builder.rules
+  constructor(rules: TMRule[]) {
+    this.rules = rules
   }
 
   public getCandinates(state: TMState, nowSymbol: TMSymbol) {
@@ -35,24 +52,19 @@ export class TMRuleSet {
 
 export class TMRuleSetBuilder {
   private nowBuildingState: string | null = null
-  rules: TMRule[] = []
+  private rules: TMRule[] = []
 
   public state(state: TMState) {
     this.nowBuildingState = state
     return this
   }
 
-  public add(
-    read: TMSymbol,
-    write: TMSymbol,
-    move: Exclude<TMMove, typeof TMMove.HALT>,
-    nextState?: TMState
-  ) {
+  public add(read: TMSymbol, write: TMSymbol, move: TMMove, nextState?: TMState) {
     if (this.nowBuildingState == null) {
       throw new Error('You must specify to what TMState this rule is bounded, using state().')
     }
 
-    this.rules.push({
+    const e = {
       nowState: this.nowBuildingState,
       read: read,
       out: {
@@ -60,7 +72,11 @@ export class TMRuleSetBuilder {
         move: move,
         nextState: nextState ?? this.nowBuildingState
       }
-    })
+    }
+
+    if (this.rules.filter(a => TMEquality.ruleEquals(a, e)).length === 0) {
+      this.rules.push(e)
+    }
 
     return this
   }
@@ -70,19 +86,23 @@ export class TMRuleSetBuilder {
       throw new Error('You must specify to what TMState this rule is bounded, using state().')
     }
 
-    this.rules.push({
+    const e = {
       nowState: this.nowBuildingState,
       read: read,
       out: {
-        move: TMMove.HALT
+        move: TMMoveAndHALT.HALT
       }
-    })
+    }
+
+    if (this.rules.filter(a => TMEquality.ruleEquals(a, e)).length === 0) {
+      this.rules.push(e)
+    }
 
     return this
   }
 
   public build() {
-    return new TMRuleSet(this)
+    return new TMRuleSet(this.rules)
   }
 }
 
@@ -141,6 +161,7 @@ export class TuringMachine {
     if (step < 0) {
       throw new Error('"step" must be >= 0.')
     }
+
     if (this.nowState == null || this.tape == null) {
       throw new Error('You must call start() before proceed().')
     }
@@ -154,16 +175,16 @@ export class TuringMachine {
 
       if (candinateRules.length > 1) {
         throw new Error(
-          `Many rules that corresponding to {${this.nowState}, ${readSymbol}} were detected.`
+          `Many rules corresponding to {${this.nowState}, ${readSymbol}} are defined.`
         )
       } else if (candinateRules.length == 0) {
         throw new Error(
-          `The rule corresponding to {${this.nowState}, ${readSymbol}} was not specified.`
+          `The rule corresponding to {${this.nowState}, ${readSymbol}} is not defined.`
         )
       }
 
       const action = candinateRules[0]
-      if (action.move == TMMove.HALT) {
+      if (action.move == TMMoveAndHALT.HALT) {
         this.halt = true
         break
       }

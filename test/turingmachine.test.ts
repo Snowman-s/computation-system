@@ -1,4 +1,12 @@
-import { TMMove, TMRuleSet, TMState, TMSymbol, TMTape, TuringMachine } from '../src/turing-machine'
+import {
+  TMMove,
+  TMMoveAndHALT,
+  TMRuleSet,
+  TMState,
+  TMSymbol,
+  TMTape,
+  TuringMachine
+} from '../src/turing-machine'
 
 describe('TMTape', function() {
   it('CreateTapeTest', () => {
@@ -49,6 +57,49 @@ describe('TMRule', () => {
     })
     const rules3 = ruleset.getCandinates(q2, A)
     expect(rules3.length).toEqual(0)
+  })
+  it('MonkeyCreateTest', () => {
+    let [A, B, C]: TMSymbol[] = ['A', 'B', 'C']
+    let [q1]: TMState[] = ['q1']
+    const builder = TMRuleSet.builder()
+
+    expect(() => builder.add(A, B, TMMove.RIGHT)).toThrowError()
+    expect(() => builder.addHALT(A)).toThrowError()
+
+    const ruleset = builder
+      .state(q1)
+      .add(A, B, TMMove.RIGHT)
+      .add(A, B, TMMove.RIGHT)
+      .add(B, B, TMMove.LEFT)
+      .add(B, A, TMMove.LEFT)
+      .addHALT(C)
+      .addHALT(C)
+      .build()
+
+    const rules1 = ruleset.getCandinates(q1, A)
+    expect(rules1.length).toEqual(1)
+    expect(rules1[0]).toEqual({
+      write: B,
+      move: TMMove.RIGHT,
+      nextState: q1
+    })
+    const rules2 = ruleset.getCandinates(q1, B)
+    expect(rules2.length).toEqual(2)
+    expect(rules2).toContainEqual({
+      write: B,
+      move: TMMove.LEFT,
+      nextState: q1
+    })
+    expect(rules2).toContainEqual({
+      write: A,
+      move: TMMove.LEFT,
+      nextState: q1
+    })
+    const rules3 = ruleset.getCandinates(q1, C)
+    expect(rules3.length).toEqual(1)
+    expect(rules3[0]).toEqual({
+      move: TMMoveAndHALT.HALT
+    })
   })
 })
 
@@ -102,5 +153,34 @@ describe('TuringMachine', function() {
     expect(tm.isAccepted()).toEqual(false)
 
     expect(() => tm.proceed()).not.toThrowError()
+  })
+  it('MonkeyTuringMachineTest', () => {
+    let [A, B, C, D, Blank]: TMSymbol[] = ['A', 'B', 'C', 'S']
+    let [q1]: TMState[] = ['q1', 'q2']
+    let ruleset = TMRuleSet.builder()
+      .state(q1)
+      .add(A, B, TMMove.LEFT)
+      .add(B, A, TMMove.RIGHT)
+      .add(C, C, TMMove.LEFT)
+      .add(C, D, TMMove.RIGHT)
+      .add(Blank, B, TMMove.CENTER)
+      .build()
+
+    let tm = new TuringMachine(ruleset, q1)
+    let tape1 = TMTape.create([A, C], Blank)
+    tm.start(tape1, 0)
+
+    expect(() => tm.proceed(-1)).toThrowError()
+
+    expect(() => tm.proceed(0)).not.toThrowError()
+    expect(() => tm.proceed(4)).not.toThrowError()
+    //複数候補
+    expect(() => tm.proceed()).toThrowError()
+
+    let tape2 = TMTape.create([Blank, A, D], Blank)
+    tm.start(tape2, 1)
+    expect(() => tm.proceed(4)).not.toThrowError()
+    //候補なし
+    expect(() => tm.proceed()).toThrowError()
   })
 })
