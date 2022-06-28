@@ -1,83 +1,83 @@
-export type TMState = string
-export type TMSymbol = string
+export type TMState = string;
+export type TMSymbol = string;
 
 export const TMMove = {
-  LEFT: 'LEFT',
-  RIGHT: 'RIGHT',
-  CENTER: 'CENTER'
-} as const
+  LEFT: "LEFT",
+  RIGHT: "RIGHT",
+  CENTER: "CENTER",
+} as const;
 
-export const TMMoveAndHALT = { ...TMMove, HALT: 'HALT' } as const
+export const TMMoveAndHALT = { ...TMMove, HALT: "HALT" } as const;
 
-export type TMMove = typeof TMMove[keyof typeof TMMove]
+export type TMMove = typeof TMMove[keyof typeof TMMove];
 
 type TMRuleOutput =
   | { write: TMState; move: TMMove; nextState: TMState }
-  | { move: typeof TMMoveAndHALT.HALT }
-type TMRule = { nowState: TMState; read: TMState; out: TMRuleOutput }
+  | { move: typeof TMMoveAndHALT.HALT };
+type TMRule = { nowState: TMState; read: TMState; out: TMRuleOutput };
 
 class TMEquality {
   static ruleEquals(a: TMRule, b: TMRule) {
     if (a.out.move === TMMoveAndHALT.HALT) {
-      return a.nowState === b.nowState && a.read === b.read && a.out.move === b.out.move
+      return a.nowState === b.nowState && a.read === b.read && a.out.move === b.out.move;
     } else {
-      if (a.out.move !== b.out.move) return false
+      if (a.out.move !== b.out.move) return false;
       return (
         a.nowState === b.nowState &&
         a.read === b.read &&
         a.out.nextState == b.out.nextState &&
         a.out.write == b.out.write
-      )
+      );
     }
   }
 }
 
 export class TMRuleSet {
   public static builder() {
-    return new TMRuleSetBuilder()
+    return new TMRuleSetBuilder();
   }
 
-  private readonly rules: TMRule[] = []
+  private readonly rules: TMRule[] = [];
 
   constructor(rules: TMRule[]) {
-    this.rules = rules
+    this.rules = rules;
   }
 
   public getCandinates(state: TMState, nowSymbol: TMSymbol) {
     return this.rules
-      .filter(rule => rule.nowState == state && rule.read == nowSymbol)
-      .map(rule => rule.out)
+      .filter((rule) => rule.nowState == state && rule.read == nowSymbol)
+      .map((rule) => rule.out);
   }
 
   public toString() {
     return (
-      '[' +
+      "[" +
       this.rules
-        .map(rule => {
+        .map((rule) => {
           if (rule.out.move === TMMoveAndHALT.HALT) {
-            return `${rule.nowState} ${rule.read}  ―`
+            return `${rule.nowState} ${rule.read}  ―`;
           } else {
-            return `${rule.nowState} ${rule.read}${rule.out.write} ${rule.out.move[0]}${rule.out.nextState}`
+            return `${rule.nowState} ${rule.read}${rule.out.write} ${rule.out.move[0]}${rule.out.nextState}`;
           }
         })
-        .join(', ') +
-      ']'
-    )
+        .join(", ") +
+      "]"
+    );
   }
 }
 
 export class TMRuleSetBuilder {
-  private nowBuildingState: string | null = null
-  private rules: TMRule[] = []
+  private nowBuildingState: string | null = null;
+  private rules: TMRule[] = [];
 
   public state(state: TMState) {
-    this.nowBuildingState = state
-    return this
+    this.nowBuildingState = state;
+    return this;
   }
 
   public add(read: TMSymbol, write: TMSymbol, move: TMMove, nextState?: TMState) {
     if (this.nowBuildingState == null) {
-      throw new Error('You must specify to what TMState this rule is bounded, using state().')
+      throw new Error("You must specify to what TMState this rule is bounded, using state().");
     }
 
     const e = {
@@ -86,48 +86,48 @@ export class TMRuleSetBuilder {
       out: {
         write: write,
         move: move,
-        nextState: nextState ?? this.nowBuildingState
-      }
+        nextState: nextState ?? this.nowBuildingState,
+      },
+    };
+
+    if (this.rules.filter((a) => TMEquality.ruleEquals(a, e)).length === 0) {
+      this.rules.push(e);
     }
 
-    if (this.rules.filter(a => TMEquality.ruleEquals(a, e)).length === 0) {
-      this.rules.push(e)
-    }
-
-    return this
+    return this;
   }
 
   public addHALT(read: TMSymbol) {
     if (this.nowBuildingState == null) {
-      throw new Error('You must specify to what TMState this rule is bounded, using state().')
+      throw new Error("You must specify to what TMState this rule is bounded, using state().");
     }
 
     const e = {
       nowState: this.nowBuildingState,
       read: read,
       out: {
-        move: TMMoveAndHALT.HALT
-      }
+        move: TMMoveAndHALT.HALT,
+      },
+    };
+
+    if (this.rules.filter((a) => TMEquality.ruleEquals(a, e)).length === 0) {
+      this.rules.push(e);
     }
 
-    if (this.rules.filter(a => TMEquality.ruleEquals(a, e)).length === 0) {
-      this.rules.push(e)
-    }
-
-    return this
+    return this;
   }
 
   public build() {
-    return new TMRuleSet(this.rules)
+    return new TMRuleSet(this.rules);
   }
 }
 
 export class TMTape {
-  private readonly data: Map<number, TMSymbol>
-  private readonly blank: TMSymbol
+  private readonly data: Map<number, TMSymbol>;
+  private readonly blank: TMSymbol;
 
-  private minIndex: number
-  private maxIndex: number
+  private minIndex: number;
+  private maxIndex: number;
 
   private constructor(
     data: Map<number, TMSymbol>,
@@ -135,151 +135,151 @@ export class TMTape {
     minIndex: number,
     maxIndex: number
   ) {
-    this.data = data
-    this.blank = blank
-    this.minIndex = minIndex
-    this.maxIndex = maxIndex
+    this.data = data;
+    this.blank = blank;
+    this.minIndex = minIndex;
+    this.maxIndex = maxIndex;
   }
 
   public static create(symbols: TMSymbol[], blank: TMSymbol) {
-    const tapeData = new Map<number, TMSymbol>()
+    const tapeData = new Map<number, TMSymbol>();
     symbols.forEach((symbol, i) => {
-      tapeData.set(i, symbol)
-    })
-    return new TMTape(tapeData, blank, 0, tapeData.size - 1)
+      tapeData.set(i, symbol);
+    });
+    return new TMTape(tapeData, blank, 0, tapeData.size - 1);
   }
 
   public read(n: number): TMSymbol {
-    return this.data.has(n) ? this.data.get(n)!! : this.blank
+    return this.data.has(n) ? this.data.get(n)!! : this.blank;
   }
 
   public write(n: number, symbol: TMSymbol) {
-    this.minIndex = Math.min(n, this.minIndex)
-    this.maxIndex = Math.max(n, this.maxIndex)
+    this.minIndex = Math.min(n, this.minIndex);
+    this.maxIndex = Math.max(n, this.maxIndex);
 
-    return this.data.set(n, symbol)
+    return this.data.set(n, symbol);
   }
 
   public clone(): TMTape {
-    return new TMTape(new Map(this.data), this.blank, this.minIndex, this.maxIndex)
+    return new TMTape(new Map(this.data), this.blank, this.minIndex, this.maxIndex);
   }
 
   /**
    * @returns A copy of this tape that cannot be modified.
    */
   public locked(): ILockedTMTape {
-    const clone = this.clone()
+    const clone = this.clone();
 
     return new (class implements ILockedTMTape {
       read(n: number): TMSymbol {
-        return clone.read(n)
+        return clone.read(n);
       }
       toString(): string {
-        return clone.toString()
+        return clone.toString();
       }
-    })()
+    })();
   }
 
   public toString() {
-    let str = '…' + this.blank
+    let str = "…" + this.blank;
     for (let index = this.minIndex; index <= this.maxIndex; index++) {
-      str += this.data.get(index) ?? this.blank
+      str += this.data.get(index) ?? this.blank;
     }
 
-    return str + this.blank + '…'
+    return str + this.blank + "…";
   }
 }
 
 export interface ILockedTMTape {
-  read(n: number): TMSymbol
-  toString(): string
+  read(n: number): TMSymbol;
+  toString(): string;
 }
 
 export class TuringMachine {
-  private readonly ruleset: TMRuleSet
-  private readonly initState: TMState
-  private readonly acceptState: TMState | null
+  private readonly ruleset: TMRuleSet;
+  private readonly initState: TMState;
+  private readonly acceptState: TMState | null;
 
-  private nowState: TMState | null = null
+  private nowState: TMState | null = null;
 
-  private initialWord: ILockedTMTape | null = null
-  private tape: TMTape | null = null
-  private headPosition = 0
+  private initialWord: ILockedTMTape | null = null;
+  private tape: TMTape | null = null;
+  private headPosition = 0;
 
-  private halt = false
+  private halt = false;
 
   constructor(ruleset: TMRuleSet, initState: TMState, acceptState: TMState | null = null) {
-    this.ruleset = ruleset
-    this.initState = initState
-    this.acceptState = acceptState
+    this.ruleset = ruleset;
+    this.initState = initState;
+    this.acceptState = acceptState;
   }
 
   public getInitialWord(): ILockedTMTape | null {
-    return this.initialWord
+    return this.initialWord;
   }
 
   public start(tape: TMTape, headPosition: number) {
-    this.initialWord = tape.locked()
-    this.tape = tape.clone()
-    this.headPosition = headPosition
-    this.nowState = this.initState
-    this.halt = false
+    this.initialWord = tape.locked();
+    this.tape = tape.clone();
+    this.headPosition = headPosition;
+    this.nowState = this.initState;
+    this.halt = false;
   }
 
   public proceed(step = 1) {
     if (step < 0) {
-      throw new Error('"step" must be >= 0.')
+      throw new Error('"step" must be >= 0.');
     }
 
     if (this.nowState == null || this.tape == null) {
-      throw new Error('You must call start() before proceed().')
+      throw new Error("You must call start() before proceed().");
     }
 
     for (let i = 0; i < step; i++) {
-      if (this.isAccepted()) return
-      if (this.isHALT()) return
+      if (this.isAccepted()) return;
+      if (this.isHALT()) return;
 
-      const readSymbol = this.tape.read(this.headPosition)
-      const candinateRules = this.ruleset.getCandinates(this.nowState, readSymbol)
+      const readSymbol = this.tape.read(this.headPosition);
+      const candinateRules = this.ruleset.getCandinates(this.nowState, readSymbol);
 
       if (candinateRules.length > 1) {
         throw new Error(
           `Many rules corresponding to {${this.nowState}, ${readSymbol}} are defined.`
-        )
+        );
       } else if (candinateRules.length == 0) {
         throw new Error(
           `The rule corresponding to {${this.nowState}, ${readSymbol}} is not defined.`
-        )
+        );
       }
 
-      const action = candinateRules[0]
+      const action = candinateRules[0];
       if (action.move == TMMoveAndHALT.HALT) {
-        this.halt = true
-        break
+        this.halt = true;
+        break;
       }
 
-      this.tape.write(this.headPosition, action.write)
+      this.tape.write(this.headPosition, action.write);
       switch (action.move) {
         case TMMove.CENTER:
           //do nothing
-          break
+          break;
         case TMMove.LEFT:
-          this.headPosition--
-          break
+          this.headPosition--;
+          break;
         case TMMove.RIGHT:
-          this.headPosition++
-          break
+          this.headPosition++;
+          break;
       }
 
-      this.nowState = action.nextState
+      this.nowState = action.nextState;
     }
   }
 
   public isAccepted() {
-    return this.nowState == this.acceptState
+    return this.nowState == this.acceptState;
   }
 
   public isHALT() {
-    return this.halt
+    return this.halt;
   }
 }

@@ -1,1 +1,1 @@
-export * from './turing-machine'
+export * from "./turing-machine";
