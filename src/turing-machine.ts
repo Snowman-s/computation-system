@@ -299,7 +299,7 @@ export class TuringMachine {
 
     for (let i = 0; i < step; i++) {
       if (this.isAccepted()) return;
-      if (this.isHALT()) return;
+      if (this.isHalted()) return;
 
       const readSymbol = this.tape.read(this.headPosition);
       const candinateRules = this.ruleset.getCandinates(this.nowState, readSymbol);
@@ -341,7 +341,7 @@ export class TuringMachine {
     return this.nowState == this.acceptState;
   }
 
-  public isHALT() {
+  public isHalted() {
     return this.halt;
   }
 

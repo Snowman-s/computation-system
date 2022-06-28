@@ -183,9 +183,9 @@ describe("TuringMachine", function () {
     tm.start([A, A, B, B], 0);
 
     tm.proceed(3);
-    expect(tm.isHALT()).toEqual(false);
+    expect(tm.isHalted()).toEqual(false);
     tm.proceed();
-    expect(tm.isHALT()).toEqual(true);
+    expect(tm.isHalted()).toEqual(true);
     expect(tm.isAccepted()).toEqual(false);
 
     expect(() => tm.proceed()).not.toThrowError();
@@ -199,7 +199,7 @@ describe("TuringMachine", function () {
     tm.start([], 0);
 
     expect(() => tm.proceed()).not.toThrowError();
-    expect(tm.isHALT()).toBe(true);
+    expect(tm.isHalted()).toBe(true);
   });
   it("MonkeyTuringMachineTest", () => {
     let [A, B, C, D, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "S");
