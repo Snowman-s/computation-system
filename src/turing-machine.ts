@@ -363,6 +363,14 @@ export class TuringMachine {
     };
   }
 
+  public getConfiguration() {
+    return {
+      nowState: this.nowState,
+      tape: this.tape?.locked(),
+      headPosition: this.headPosition,
+    };
+  }
+
   public toString() {
     return `[blank=${this.blank},ruleset=${this.ruleset},init=${this.initState.value},acc=${this.acceptState?.value}]`;
   }
