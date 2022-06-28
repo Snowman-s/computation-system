@@ -147,12 +147,11 @@ describe("TuringMachine", function () {
       .state(qf)
       .build();
 
-    let tm = new TuringMachine(ruleset, q1, qf);
+    let tm = new TuringMachine(Blank, ruleset, q1, qf);
     //スタート前
     expect(() => tm.proceed()).toThrowError();
 
-    let tape = TMTape.create([A, A, B, B], Blank);
-    tm.start(tape, 0);
+    tm.start([A, A, B, B], 0);
 
     tm.proceed(3);
 
@@ -164,8 +163,7 @@ describe("TuringMachine", function () {
 
     //nullではない
     const initialWord = tm.getInitialWord()!;
-    expect(initialWord.read(-1)).toBe(Blank);
-    expect(initialWord.read(1)).toBe(A);
+    expect(initialWord[1]).toBe(A);
     expect(initialWord).not.toHaveProperty("write");
     //これ以上TMが動くことは無い
     expect(() => tm.proceed()).not.toThrowError();
@@ -181,9 +179,8 @@ describe("TuringMachine", function () {
       .addHALT(B)
       .build();
 
-    let tm = new TuringMachine(ruleset, q1);
-    let tape = TMTape.create([A, A, B, B], Blank);
-    tm.start(tape, 0);
+    let tm = new TuringMachine(Blank, ruleset, q1);
+    tm.start([A, A, B, B], 0);
 
     tm.proceed(3);
     expect(tm.isHALT()).toEqual(false);
@@ -198,9 +195,8 @@ describe("TuringMachine", function () {
     let [q1]: TMState[] = TMStateFrom("q1");
     let ruleset = TMRuleSet.builder().state(q1).addHALT(Blank).build();
 
-    let tm = new TuringMachine(ruleset, q1);
-    let tape1 = TMTape.create([], Blank);
-    tm.start(tape1, 0);
+    let tm = new TuringMachine(Blank, ruleset, q1);
+    tm.start([], 0);
 
     expect(() => tm.proceed()).not.toThrowError();
     expect(tm.isHALT()).toBe(true);
@@ -217,9 +213,8 @@ describe("TuringMachine", function () {
       .add(Blank, B, TMMove.CENTER)
       .build();
 
-    let tm = new TuringMachine(ruleset, q1);
-    let tape1 = TMTape.create([A, C], Blank);
-    tm.start(tape1, 0);
+    let tm = new TuringMachine(Blank, ruleset, q1);
+    tm.start([A, C], 0);
 
     expect(() => tm.proceed(-1)).toThrowError();
 
@@ -228,8 +223,7 @@ describe("TuringMachine", function () {
     //複数候補
     expect(() => tm.proceed()).toThrowError();
 
-    let tape2 = TMTape.create([Blank, A, D], Blank);
-    tm.start(tape2, 1);
+    tm.start([Blank, A, D], 1);
     expect(() => tm.proceed(4)).not.toThrowError();
     //候補なし
     expect(() => tm.proceed()).toThrowError();

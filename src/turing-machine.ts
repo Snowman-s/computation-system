@@ -225,31 +225,38 @@ export interface ILockedTMTape {
 }
 
 export class TuringMachine {
+  private readonly blank: TMSymbol;
   private readonly ruleset: TMRuleSet;
   private readonly initState: TMState;
   private readonly acceptState: TMState | null;
 
   private nowState: TMState | null = null;
 
-  private initialWord: ILockedTMTape | null = null;
+  private initialWord: TMSymbol[] | null = null;
   private tape: TMTape | null = null;
   private headPosition = 0;
 
   private halt = false;
 
-  constructor(ruleset: TMRuleSet, initState: TMState, acceptState: TMState | null = null) {
+  constructor(
+    blank: TMSymbol,
+    ruleset: TMRuleSet,
+    initState: TMState,
+    acceptState: TMState | null = null
+  ) {
+    this.blank = blank;
     this.ruleset = ruleset;
     this.initState = initState;
     this.acceptState = acceptState;
   }
 
-  public getInitialWord(): ILockedTMTape | null {
+  public getInitialWord(): TMSymbol[] | null {
     return this.initialWord;
   }
 
-  public start(tape: TMTape, headPosition: number) {
-    this.initialWord = tape.locked();
-    this.tape = tape.clone();
+  public start(word: TMSymbol[], headPosition: number) {
+    this.initialWord = [...word];
+    this.tape = TMTape.create(word, this.blank);
     this.headPosition = headPosition;
     this.nowState = this.initState;
     this.halt = false;
@@ -316,7 +323,7 @@ export class TuringMachine {
     return {
       stateSet: "",
       symbolSet: "",
-      blankSymbol: "",
+      blankSymbol: this.blank,
       inputSymbolSet: "",
       ruleset: this.ruleset,
       initState: this.initState,
