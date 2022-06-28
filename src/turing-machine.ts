@@ -64,13 +64,39 @@ export class TMRuleSet {
   private readonly rules: TMRule[] = [];
 
   constructor(rules: TMRule[]) {
-    this.rules = rules;
+    this.rules = [...rules];
   }
 
   public getCandinates(state: TMState, nowSymbol: TMSymbol) {
     return this.rules
       .filter((rule) => rule.nowState == state && rule.read == nowSymbol)
       .map((rule) => rule.out);
+  }
+
+  public getAllUsedSymbols() {
+    const symbols = new Set<TMSymbol>();
+
+    this.rules.forEach((rule) => {
+      symbols.add(rule.read);
+      if (rule.out.move !== "HALT") {
+        symbols.add(rule.out.write);
+      }
+    });
+
+    return symbols;
+  }
+
+  public getAllUsedStates() {
+    const states = new Set<TMState>();
+
+    this.rules.forEach((rule) => {
+      states.add(rule.nowState);
+      if (rule.out.move !== "HALT") {
+        states.add(rule.out.nextState);
+      }
+    });
+
+    return states;
   }
 
   public toString() {
@@ -321,8 +347,8 @@ export class TuringMachine {
 
   public asTuple() {
     return {
-      stateSet: "",
-      symbolSet: "",
+      stateSet: this.ruleset.getAllUsedStates(),
+      symbolSet: this.ruleset.getAllUsedSymbols(),
       blankSymbol: this.blank,
       inputSymbolSet: "",
       ruleset: this.ruleset,
@@ -332,6 +358,6 @@ export class TuringMachine {
   }
 
   public toString() {
-    return `[ruleset=${this.ruleset},init=${this.initState.value},acc=${this.acceptState?.value}]`;
+    return `[blank=${this.blank},ruleset=${this.ruleset},init=${this.initState.value},acc=${this.acceptState?.value}]`;
   }
 }
