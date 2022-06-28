@@ -311,4 +311,8 @@ export class TuringMachine {
   public isHALT() {
     return this.halt;
   }
+
+  public toString() {
+    return `[ruleset=${this.ruleset},init=${this.initState.value},acc=${this.acceptState?.value}]`;
+  }
 }
