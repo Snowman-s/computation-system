@@ -346,11 +346,13 @@ export class TuringMachine {
   }
 
   public asTuple() {
+    const symbols = this.ruleset.getAllUsedStates();
+
     return {
-      stateSet: this.ruleset.getAllUsedStates(),
+      stateSet: symbols,
       symbolSet: this.ruleset.getAllUsedSymbols(),
       blankSymbol: this.blank,
-      inputSymbolSet: "",
+      inputSymbolSet: new Set(symbols),
       ruleset: this.ruleset,
       initState: this.initState,
       acceptState: this.acceptState,
