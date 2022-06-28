@@ -35,10 +35,14 @@ export const TMMoveAndHALT = { ...TMMove, HALT: "HALT" } as const;
 
 export type TMMove = typeof TMMove[keyof typeof TMMove];
 
-type TMRuleOutput =
-  | { write: TMSymbol; move: TMMove; nextState: TMState }
-  | { move: typeof TMMoveAndHALT.HALT };
-type TMRule = { nowState: TMState; read: TMSymbol; out: TMRuleOutput };
+export type TMRuleOutput =
+  | { readonly write: TMSymbol; readonly move: TMMove; readonly nextState: TMState }
+  | { readonly move: typeof TMMoveAndHALT.HALT };
+export type TMRule = {
+  readonly nowState: TMState;
+  readonly read: TMSymbol;
+  readonly out: TMRuleOutput;
+};
 
 class TMEquality {
   static ruleEquals(a: TMRule, b: TMRule) {
