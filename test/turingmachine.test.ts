@@ -3,14 +3,16 @@ import {
   TMMoveAndHALT,
   TMRuleSet,
   TMState,
+  TMStateFrom,
   TMSymbol,
+  TMSymbolFrom,
   TMTape,
   TuringMachine,
 } from "../src/turing-machine";
 
 describe("TMTape", function () {
   it("CreateTapeTest", () => {
-    let [A, B, Blank]: TMSymbol[] = ["A", "B", "S"];
+    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
     let tape = TMTape.create([A, A, B, B], Blank);
 
     expect(tape.read(0)).toEqual(A);
@@ -18,7 +20,7 @@ describe("TMTape", function () {
     expect(tape.read(-5)).toEqual(Blank);
   });
   it("TapeWriteTest", () => {
-    let [A, B, C, Blank]: TMSymbol[] = ["A", "B", "C", "S"];
+    let [A, B, C, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "S");
     let tape = TMTape.create([A, A, B, B], Blank);
 
     tape.write(1, C);
@@ -29,7 +31,7 @@ describe("TMTape", function () {
     expect(tape.read(-9)).toEqual(B);
   });
   it("ToStringTest", () => {
-    let [A, B, Blank]: TMSymbol[] = ["A", "B", "S"];
+    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
     let tape = TMTape.create([A, A, A, A], Blank);
 
     expect(tape.toString()).toEqual("…SAAAAS…");
@@ -48,8 +50,8 @@ describe("TMTape", function () {
 
 describe("TMRule", () => {
   it("NormalTMRuleTest", () => {
-    let [A, B]: TMSymbol[] = ["A", "B"];
-    let [q1, q2]: TMState[] = ["q1", "q2"];
+    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, TMMove.RIGHT)
@@ -75,8 +77,8 @@ describe("TMRule", () => {
     expect(rules3.length).toEqual(0);
   });
   it("MonkeyCreateTest", () => {
-    let [A, B, C]: TMSymbol[] = ["A", "B", "C"];
-    let [q1]: TMState[] = ["q1"];
+    let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+    let [q1]: TMState[] = TMStateFrom("q1");
     const builder = TMRuleSet.builder();
 
     expect(() => builder.add(A, B, TMMove.RIGHT)).toThrowError();
@@ -118,8 +120,8 @@ describe("TMRule", () => {
     });
   });
   it("ToStringTest", () => {
-    let [A, B]: TMSymbol[] = ["A", "B"];
-    let [q1, q2]: TMState[] = ["q1", "q2"];
+    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, TMMove.RIGHT)
@@ -134,8 +136,8 @@ describe("TMRule", () => {
 
 describe("TuringMachine", function () {
   it("ManuallyProceedTest", () => {
-    let [A, B, Blank]: TMSymbol[] = ["A", "B", "S"];
-    let [q1, q2, qf]: TMState[] = ["q1", "q2", "qf"];
+    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
     let ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, TMMove.RIGHT)
@@ -169,8 +171,8 @@ describe("TuringMachine", function () {
     expect(() => tm.proceed()).not.toThrowError();
   });
   it('Use"HALT"Test', () => {
-    let [A, B, Blank]: TMSymbol[] = ["A", "B", "S"];
-    let [q1, q2]: TMState[] = ["q1", "q2"];
+    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     let ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, TMMove.RIGHT)
@@ -192,8 +194,8 @@ describe("TuringMachine", function () {
     expect(() => tm.proceed()).not.toThrowError();
   });
   it("Zero-LengthTapeTest", () => {
-    let [Blank]: TMSymbol[] = ["S"];
-    let [q1]: TMState[] = ["q1"];
+    let [Blank]: TMSymbol[] = TMSymbolFrom("S");
+    let [q1]: TMState[] = TMStateFrom("q1");
     let ruleset = TMRuleSet.builder().state(q1).addHALT(Blank).build();
 
     let tm = new TuringMachine(ruleset, q1);
@@ -204,8 +206,8 @@ describe("TuringMachine", function () {
     expect(tm.isHALT()).toBe(true);
   });
   it("MonkeyTuringMachineTest", () => {
-    let [A, B, C, D, Blank]: TMSymbol[] = ["A", "B", "C", "S"];
-    let [q1]: TMState[] = ["q1", "q2"];
+    let [A, B, C, D, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "S");
+    let [q1]: TMState[] = TMStateFrom("q1", "q2");
     let ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, TMMove.LEFT)

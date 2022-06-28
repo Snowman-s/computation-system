@@ -1,5 +1,29 @@
-export type TMState = string;
-export type TMSymbol = string;
+// この似通った二つを適切に区別する為、meaningを定義
+/**
+ * チューリングマシンの内部状態
+ */
+export type TMState = { value: string; meaning: "state" };
+/**
+ * チューリングマシンのテープ上の記号
+ */
+export type TMSymbol = { value: string; meaning: "symbol" };
+
+export function TMStateFrom(...strs: string[]): TMState[] {
+  return strs.map((str) => {
+    return {
+      value: str,
+      meaning: "state",
+    };
+  });
+}
+export function TMSymbolFrom(...strs: string[]): TMSymbol[] {
+  return strs.map((str) => {
+    return {
+      value: str,
+      meaning: "symbol",
+    };
+  });
+}
 
 export const TMMove = {
   LEFT: "LEFT",
@@ -12,9 +36,9 @@ export const TMMoveAndHALT = { ...TMMove, HALT: "HALT" } as const;
 export type TMMove = typeof TMMove[keyof typeof TMMove];
 
 type TMRuleOutput =
-  | { write: TMState; move: TMMove; nextState: TMState }
+  | { write: TMSymbol; move: TMMove; nextState: TMState }
   | { move: typeof TMMoveAndHALT.HALT };
-type TMRule = { nowState: TMState; read: TMState; out: TMRuleOutput };
+type TMRule = { nowState: TMState; read: TMSymbol; out: TMRuleOutput };
 
 class TMEquality {
   static ruleEquals(a: TMRule, b: TMRule) {
@@ -50,14 +74,19 @@ export class TMRuleSet {
   }
 
   public toString() {
+    let v = function <T>(k: { value: T }) {
+      return k.value;
+    };
     return (
       "[" +
       this.rules
         .map((rule) => {
           if (rule.out.move === TMMoveAndHALT.HALT) {
-            return `${rule.nowState} ${rule.read}  ―`;
+            return `${v(rule.nowState)} ${v(rule.read)}  ―`;
           } else {
-            return `${rule.nowState} ${rule.read}${rule.out.write} ${rule.out.move[0]}${rule.out.nextState}`;
+            return `${v(rule.nowState)} ${v(rule.read)}${v(rule.out.write)} ${rule.out.move[0]}${v(
+              rule.out.nextState
+            )}`;
           }
         })
         .join(", ") +
@@ -67,7 +96,7 @@ export class TMRuleSet {
 }
 
 export class TMRuleSetBuilder {
-  private nowBuildingState: string | null = null;
+  private nowBuildingState: TMState | null = null;
   private rules: TMRule[] = [];
 
   public state(state: TMState) {
@@ -181,12 +210,12 @@ export class TMTape {
   }
 
   public toString() {
-    let str = "…" + this.blank;
+    let str = "…" + this.blank.value;
     for (let index = this.minIndex; index <= this.maxIndex; index++) {
-      str += this.data.get(index) ?? this.blank;
+      str += this.data.get(index)?.value ?? this.blank.value;
     }
 
-    return str + this.blank + "…";
+    return str + this.blank.value + "…";
   }
 }
 
