@@ -2,11 +2,11 @@
 /**
  * チューリングマシンの内部状態
  */
-export type TMState = { value: string; meaning: "state" };
+export type TMState = { readonly value: string; readonly meaning: "state" };
 /**
  * チューリングマシンのテープ上の記号
  */
-export type TMSymbol = { value: string; meaning: "symbol" };
+export type TMSymbol = { readonly value: string; readonly meaning: "symbol" };
 
 export function TMStateFrom(...strs: string[]): TMState[] {
   return strs.map((str) => {
@@ -310,6 +310,18 @@ export class TuringMachine {
 
   public isHALT() {
     return this.halt;
+  }
+
+  public asTuple() {
+    return {
+      stateSet: "",
+      symbolSet: "",
+      blankSymbol: "",
+      inputSymbolSet: "",
+      ruleset: this.ruleset,
+      initState: this.initState,
+      acceptState: this.acceptState,
+    };
   }
 
   public toString() {
