@@ -40,6 +40,9 @@ describe('TMTape', function() {
     tape.write(-2, B)
     expect(tape.toString()).toEqual('…SBSABAASBS…')
     expect(`${tape}`).toEqual('…SBSABAASBS…')
+
+    let tape2 = TMTape.create([], Blank)
+    expect(tape2.toString()).toEqual('…SS…')
   })
 })
 
@@ -154,6 +157,14 @@ describe('TuringMachine', function() {
     expect(tm.isAccepted()).toBe(false)
     tm.proceed()
     expect(tm.isAccepted()).toBe(true)
+
+    expect(tm.getInitialWord()).not.toBeNull()
+
+    //nullではない
+    const initialWord = tm.getInitialWord()!
+    expect(initialWord.read(-1)).toBe(Blank)
+    expect(initialWord.read(1)).toBe(A)
+    expect(initialWord).not.toHaveProperty('write')
     //これ以上TMが動くことは無い
     expect(() => tm.proceed()).not.toThrowError()
   })
@@ -179,6 +190,21 @@ describe('TuringMachine', function() {
     expect(tm.isAccepted()).toEqual(false)
 
     expect(() => tm.proceed()).not.toThrowError()
+  })
+  it('Zero-LengthTapeTest', () => {
+    let [Blank]: TMSymbol[] = ['S']
+    let [q1]: TMState[] = ['q1']
+    let ruleset = TMRuleSet.builder()
+      .state(q1)
+      .addHALT(Blank)
+      .build()
+
+    let tm = new TuringMachine(ruleset, q1)
+    let tape1 = TMTape.create([], Blank)
+    tm.start(tape1, 0)
+
+    expect(() => tm.proceed()).not.toThrowError()
+    expect(tm.isHALT()).toBe(true)
   })
   it('MonkeyTuringMachineTest', () => {
     let [A, B, C, D, Blank]: TMSymbol[] = ['A', 'B', 'C', 'S']

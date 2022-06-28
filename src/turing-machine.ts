@@ -37,7 +37,7 @@ export class TMRuleSet {
     return new TMRuleSetBuilder()
   }
 
-  private rules: TMRule[] = []
+  private readonly rules: TMRule[] = []
 
   constructor(rules: TMRule[]) {
     this.rules = rules
@@ -149,7 +149,7 @@ export class TMTape {
     return new TMTape(tapeData, blank, 0, tapeData.size - 1)
   }
 
-  public read(n: number) {
+  public read(n: number): TMSymbol {
     return this.data.has(n) ? this.data.get(n)!! : this.blank
   }
 
@@ -158,6 +158,26 @@ export class TMTape {
     this.maxIndex = Math.max(n, this.maxIndex)
 
     return this.data.set(n, symbol)
+  }
+
+  public clone(): TMTape {
+    return new TMTape(new Map(this.data), this.blank, this.minIndex, this.maxIndex)
+  }
+
+  /**
+   * @returns A copy of this tape that cannot be modified.
+   */
+  public locked(): ILockedTMTape {
+    const clone = this.clone()
+
+    return new (class implements ILockedTMTape {
+      read(n: number): TMSymbol {
+        return clone.read(n)
+      }
+      toString(): string {
+        return clone.toString()
+      }
+    })()
   }
 
   public toString() {
@@ -170,6 +190,11 @@ export class TMTape {
   }
 }
 
+export interface ILockedTMTape {
+  read(n: number): TMSymbol
+  toString(): string
+}
+
 export class TuringMachine {
   private readonly ruleset: TMRuleSet
   private readonly initState: TMState
@@ -177,6 +202,7 @@ export class TuringMachine {
 
   private nowState: TMState | null = null
 
+  private initialWord: ILockedTMTape | null = null
   private tape: TMTape | null = null
   private headPosition = 0
 
@@ -188,8 +214,13 @@ export class TuringMachine {
     this.acceptState = acceptState
   }
 
+  public getInitialWord(): ILockedTMTape | null {
+    return this.initialWord
+  }
+
   public start(tape: TMTape, headPosition: number) {
-    this.tape = tape
+    this.initialWord = tape.locked()
+    this.tape = tape.clone()
     this.headPosition = headPosition
     this.nowState = this.initState
     this.halt = false
