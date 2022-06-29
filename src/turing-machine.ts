@@ -350,11 +350,16 @@ export class TuringMachine {
   }
 
   public asTuple() {
-    const symbols = this.ruleset.getAllUsedStates();
+    const states = this.ruleset.getAllUsedStates();
+    states.add(this.initState);
+    if (this.acceptState !== null) states.add(this.acceptState);
+
+    const symbols = this.ruleset.getAllUsedSymbols();
+    symbols.add(this.blank);
 
     return {
-      stateSet: symbols,
-      symbolSet: this.ruleset.getAllUsedSymbols(),
+      stateSet: states,
+      symbolSet: symbols,
       blankSymbol: this.blank,
       inputSymbolSet: new Set(symbols),
       ruleset: this.ruleset,
@@ -364,11 +369,15 @@ export class TuringMachine {
   }
 
   public getConfiguration() {
-    return {
-      nowState: this.nowState,
-      tape: this.tape?.locked(),
-      headPosition: this.headPosition,
-    };
+    if (this.tape === null || this.nowState === null) {
+      return null;
+    } else {
+      return {
+        nowState: this.nowState,
+        tape: this.tape.locked(),
+        headPosition: this.headPosition,
+      };
+    }
   }
 
   public toString() {
