@@ -37,23 +37,10 @@ export function TMSymbolFrom(...strs: string[]): TMSymbol[] {
 }
 
 /**
- * @deprecated
- */
-export const TMMove = {
-  LEFT: "LEFT",
-  RIGHT: "RIGHT",
-  CENTER: "CENTER",
-} as const;
-
-/**
- * @deprecated
- */
-export const TMMoveAndHALT = { ...TMMove, HALT: "HALT" } as const;
-
-/**
  * Movement of the head of the Turing machine
+ * "L" means left, "R" means right.
  */
-export type TMMove = typeof TMMove[keyof typeof TMMove];
+export type TMMove = "L" | "R";
 
 /**
  * The information on what changes will occur after the rule is applied
@@ -61,7 +48,7 @@ export type TMMove = typeof TMMove[keyof typeof TMMove];
  */
 export type TMRuleOutput =
   | { readonly write: TMSymbol; readonly move: TMMove; readonly nextState: TMState }
-  | { readonly move: typeof TMMoveAndHALT.HALT };
+  | { readonly move: "HALT" };
 
 /**
  * What indicates the operation of the head of a Turing machine
@@ -75,7 +62,7 @@ export type TMRule = {
 
 class TMEquality {
   static ruleEquals(a: TMRule, b: TMRule) {
-    if (a.out.move === TMMoveAndHALT.HALT) {
+    if (a.out.move === "HALT") {
       return a.nowState === b.nowState && a.read === b.read && a.out.move === b.out.move;
     } else {
       if (a.out.move !== b.out.move) return false;
@@ -177,7 +164,7 @@ export class TMRuleSet {
       "[" +
       this.rules
         .map((rule) => {
-          if (rule.out.move === TMMoveAndHALT.HALT) {
+          if (rule.out.move === "HALT") {
             return `${v(rule.nowState)} ${v(rule.read)}  ―`;
           } else {
             return `${v(rule.nowState)} ${v(rule.read)}${v(rule.out.write)} ${rule.out.move[0]}${v(
@@ -262,11 +249,11 @@ export class TMRuleSetBuilder {
       throw new Error("You must specify to what TMState this rule is bounded, using state().");
     }
 
-    const e = {
+    const e: TMRule = {
       nowState: this.nowBuildingState,
       read: read,
       out: {
-        move: TMMoveAndHALT.HALT,
+        move: "HALT",
       },
     };
 
@@ -473,20 +460,17 @@ export class TuringMachine {
       }
 
       const action = candinateRules[0];
-      if (action.move == TMMoveAndHALT.HALT) {
+      if (action.move === "HALT") {
         this.halt = true;
         break;
       }
 
       this.tape.write(this.headPosition, action.write);
       switch (action.move) {
-        case TMMove.CENTER:
-          //do nothing
-          break;
-        case TMMove.LEFT:
+        case "L":
           this.headPosition--;
           break;
-        case TMMove.RIGHT:
+        case "R":
           this.headPosition++;
           break;
       }

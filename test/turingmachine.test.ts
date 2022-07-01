@@ -1,4 +1,3 @@
-import exp from "constants";
 import {
   TMMove,
   TMRuleSet,
@@ -68,9 +67,9 @@ describe("TMRule", () => {
     let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.RIGHT)
+      .add(A, B, "R")
       .state(q2)
-      .add(B, B, TMMove.RIGHT, q1)
+      .add(B, B, "R", q1)
       .build();
     expect(ruleset.getAllUsedStates()).toContain(q1);
     expect(ruleset.getAllUsedStates()).toContain(q2);
@@ -81,14 +80,14 @@ describe("TMRule", () => {
     expect(rules1.length).toEqual(1);
     expect(rules1[0]).toEqual({
       write: B,
-      move: TMMove.RIGHT,
+      move: "R",
       nextState: q1,
     });
     const rules2 = ruleset.getCandinates(q2, B);
     expect(rules2.length).toEqual(1);
     expect(rules2[0]).toEqual({
       write: B,
-      move: TMMove.RIGHT,
+      move: "R",
       nextState: q1,
     });
     const rules3 = ruleset.getCandinates(q2, A);
@@ -99,15 +98,15 @@ describe("TMRule", () => {
     let [q1]: TMState[] = TMStateFrom("q1");
     const builder = TMRuleSet.builder();
 
-    expect(() => builder.add(A, B, TMMove.RIGHT)).toThrowError();
+    expect(() => builder.add(A, B, "R")).toThrowError();
     expect(() => builder.addHALT(A)).toThrowError();
 
     const ruleset = builder
       .state(q1)
-      .add(A, B, TMMove.RIGHT)
-      .add(A, B, TMMove.RIGHT)
-      .add(B, B, TMMove.LEFT)
-      .add(B, A, TMMove.LEFT)
+      .add(A, B, "R")
+      .add(A, B, "R")
+      .add(B, B, "L")
+      .add(B, A, "L")
       .addHALT(C)
       .addHALT(C)
       .build();
@@ -116,19 +115,19 @@ describe("TMRule", () => {
     expect(rules1.length).toEqual(1);
     expect(rules1[0]).toEqual({
       write: B,
-      move: TMMove.RIGHT,
+      move: "R",
       nextState: q1,
     });
     const rules2 = ruleset.getCandinates(q1, B);
     expect(rules2.length).toEqual(2);
     expect(rules2).toContainEqual({
       write: B,
-      move: TMMove.LEFT,
+      move: "L",
       nextState: q1,
     });
     expect(rules2).toContainEqual({
       write: A,
-      move: TMMove.LEFT,
+      move: "L",
       nextState: q1,
     });
     const rules3 = ruleset.getCandinates(q1, C);
@@ -140,9 +139,9 @@ describe("TMRule", () => {
     let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.RIGHT)
+      .add(A, B, "R")
       .state(q2)
-      .add(B, B, TMMove.RIGHT, q1)
+      .add(B, B, "R", q1)
       .addHALT(A)
       .build();
 
@@ -156,10 +155,10 @@ describe("TuringMachine", function () {
     let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
     let ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.RIGHT)
-      .add(B, A, TMMove.RIGHT, q2)
+      .add(A, B, "R")
+      .add(B, A, "R", q2)
       .state(q2)
-      .add(B, B, TMMove.RIGHT, qf)
+      .add(B, B, "R", qf)
       .state(qf)
       .build();
 
@@ -189,8 +188,8 @@ describe("TuringMachine", function () {
     let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     let ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.RIGHT)
-      .add(B, A, TMMove.RIGHT, q2)
+      .add(A, B, "R")
+      .add(B, A, "R", q2)
       .state(q2)
       .addHALT(B)
       .build();
@@ -222,9 +221,9 @@ describe("TuringMachine", function () {
     let [q1, qf]: TMState[] = TMStateFrom("q1", "qf");
     let ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.LEFT)
-      .add(B, A, TMMove.RIGHT)
-      .add(Blank, B, TMMove.CENTER)
+      .add(A, B, "L")
+      .add(B, A, "R")
+      .add(Blank, B, "R")
       .build();
 
     let tm = new TuringMachine(Blank, ruleset, q1, qf);
@@ -236,7 +235,7 @@ describe("TuringMachine", function () {
     expect(tuple.inputSymbolSet).toContain(A);
     expect(tuple.inputSymbolSet).toContain(B);
     expect(tuple.inputSymbolSet).toContain(Blank);
-    expect(tuple.ruleset.getCandinates(q1, A)[0].move).toEqual(TMMove.LEFT);
+    expect(tuple.ruleset.getCandinates(q1, A)[0].move).toEqual("L");
     expect(tuple.symbolSet).toContain(A);
     expect(tuple.symbolSet).toContain(B);
     expect(tuple.symbolSet).toContain(Blank);
@@ -248,10 +247,10 @@ describe("TuringMachine", function () {
     let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
     let ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.RIGHT)
-      .add(B, A, TMMove.RIGHT, q2)
+      .add(A, B, "R")
+      .add(B, A, "R", q2)
       .state(q2)
-      .add(B, B, TMMove.RIGHT, qf)
+      .add(B, B, "R", qf)
       .state(qf)
       .build();
 
@@ -277,11 +276,11 @@ describe("TuringMachine", function () {
     let [q1]: TMState[] = TMStateFrom("q1");
     let ruleset = TMRuleSet.builder()
       .state(q1)
-      .add(A, B, TMMove.LEFT)
-      .add(B, A, TMMove.RIGHT)
-      .add(C, C, TMMove.LEFT)
-      .add(C, D, TMMove.RIGHT)
-      .add(Blank, B, TMMove.CENTER)
+      .add(A, B, "L")
+      .add(B, A, "R")
+      .add(C, C, "L")
+      .add(C, D, "R")
+      .add(Blank, B, "R")
       .build();
 
     let tm = new TuringMachine(Blank, ruleset, q1);
@@ -290,12 +289,12 @@ describe("TuringMachine", function () {
     expect(() => tm.proceed(-1)).toThrowError();
 
     expect(() => tm.proceed(0)).not.toThrowError();
-    expect(() => tm.proceed(4)).not.toThrowError();
+    expect(() => tm.proceed(3)).not.toThrowError();
     //複数候補
     expect(() => tm.proceed()).toThrowError();
 
     tm.start([Blank, A, D], 1);
-    expect(() => tm.proceed(4)).not.toThrowError();
+    expect(() => tm.proceed(3)).not.toThrowError();
     //候補なし
     expect(() => tm.proceed()).toThrowError();
   });
