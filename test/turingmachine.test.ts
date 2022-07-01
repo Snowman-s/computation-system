@@ -1,7 +1,6 @@
 import exp from "constants";
 import {
   TMMove,
-  TMMoveAndHALT,
   TMRuleSet,
   TMState,
   TMStateFrom,
@@ -134,9 +133,7 @@ describe("TMRule", () => {
     });
     const rules3 = ruleset.getCandinates(q1, C);
     expect(rules3.length).toEqual(1);
-    expect(rules3[0]).toEqual({
-      move: TMMoveAndHALT.HALT,
-    });
+    expect(rules3[0].move).toEqual("HALT");
   });
   it("ToStringTest", () => {
     let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
