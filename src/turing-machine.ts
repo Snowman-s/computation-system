@@ -37,8 +37,8 @@ export function TMSymbolFrom(...strs: string[]): TMSymbol[] {
 }
 
 /**
- * Movement of the head of the Turing machine
- * "L" means left, "R" means right.
+ * Movement of the head of the Turing machine.
+ * @remarks "L" means left, "R" means right.
  */
 export type TMMove = "L" | "R";
 
