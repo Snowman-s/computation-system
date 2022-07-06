@@ -1,9 +1,7 @@
-import { assert } from "console";
 import {
   TagSystem,
   TagSystemLetter,
   TagSystemLetterFrom,
-  TagSystemRule,
   TagSystemRuleSet,
 } from "../src/tag-system";
 
@@ -21,7 +19,7 @@ describe("TagSystemRule", () => {
     expect(rule1[0].stop).toEqual(false);
     if (rule1[0].stop === false) {
       //Should be exec.
-      expect(rule1[0].writeWord.getLetters()).toEqual([A, B]);
+      expect(rule1[0].writeWord.asLetters()).toEqual([A, B]);
     }
     const rule2 = ruleset.getCandinates(H);
     expect(rule2.length).toEqual(1);
@@ -90,26 +88,26 @@ describe("TagSystemTest", () => {
     expect(word1).not.toBeNull();
     if (word1 !== null) {
       // Must be to exec.
-      expect(word1.getLetters()).toEqual([a, c, c, a]);
+      expect(word1.asLetters()).toEqual([a, c, c, a]);
     }
     ts.proceed(3);
     const word2 = ts.getNowWord();
     expect(word2).not.toBeNull();
     if (word2 !== null) {
-      expect(word2.getLetters()).toEqual([b, a, H, c, c, c, c]);
+      expect(word2.asLetters()).toEqual([b, a, H, c, c, c, c]);
     }
     ts.proceed(10);
     const word3 = ts.getNowWord();
     expect(word3).not.toBeNull();
     if (word3 !== null) {
-      expect(word3.getLetters()).toEqual([H, c, c, c, c, c, c, a]);
+      expect(word3.asLetters()).toEqual([H, c, c, c, c, c, c, a]);
     }
     expect(ts.isStopped()).toBe(true);
     ts.proceed(10);
     const word4 = ts.getNowWord();
     expect(word4).not.toBeNull();
     if (word4 !== null) {
-      expect(word4.getLetters()).toEqual([H, c, c, c, c, c, c, a]);
+      expect(word4.asLetters()).toEqual([H, c, c, c, c, c, c, a]);
     }
   });
   it("MonkeyTagSystemTest", () => {
