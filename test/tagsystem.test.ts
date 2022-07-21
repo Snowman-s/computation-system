@@ -15,45 +15,29 @@ describe("TagSystemRule", () => {
     expect(ruleset.getAllUsedLetters()).toContain(H);
 
     const rule1 = ruleset.getCandinates(A);
-    expect(rule1.length).toEqual(1);
-    expect(rule1[0].stop).toEqual(false);
-    if (rule1[0].stop === false) {
+    expect(rule1.stop).toEqual(false);
+    if (rule1.stop === false) {
       //Should be exec.
-      expect(rule1[0].writeWord.asLetters()).toEqual([A, B]);
+      expect(rule1.writeWord.asLetters()).toEqual([A, B]);
     }
     const rule2 = ruleset.getCandinates(H);
-    expect(rule2.length).toEqual(1);
-    expect(rule2[0].stop).toEqual(true);
+    expect(rule2.stop).toEqual(true);
   });
   it("MonkeyCreateTest", () => {
     const [A, B, C, D, H]: TagSystemLetter[] = TagSystemLetterFrom("A", "B", "C", "D", "H");
-    const ruleset = TagSystemRuleSet.builder()
-      .add(A, [A, B])
-      .add(A, [A, B])
-      .add(B, [C])
-      .addStop(B)
-      .add(C, [C])
-      .add(C, [C, D])
-      .addStop(H)
-      .addStop(H)
-      .build();
+    expect(() => TagSystemRuleSet.builder().add(A, [A, A]).add(A, [A, B])).toThrow();
 
-    const rule1 = ruleset.getCandinates(A);
-    expect(rule1.length).toBe(1);
-    const rule2 = ruleset.getCandinates(B);
-    expect(rule2.length).toBe(2);
-    const rule3 = ruleset.getCandinates(C);
-    expect(rule3.length).toBe(2);
-    const rule4 = ruleset.getCandinates(D);
-    expect(rule4.length).toBe(0);
-    const rule5 = ruleset.getCandinates(H);
-    expect(rule5.length).toBe(1);
+    expect(() => TagSystemRuleSet.builder().add(B, [A]).addStop(B)).toThrow();
 
-    expect(ruleset.getAllUsedLetters().filter((k) => k === A)).toHaveLength(1);
-    expect(ruleset.getAllUsedLetters().filter((k) => k === B)).toHaveLength(1);
-    expect(ruleset.getAllUsedLetters().filter((k) => k === C)).toHaveLength(1);
-    expect(ruleset.getAllUsedLetters().filter((k) => k === D)).toHaveLength(1);
-    expect(ruleset.getAllUsedLetters().filter((k) => k === H)).toHaveLength(1);
+    expect(() => TagSystemRuleSet.builder().add(D, [A]).add(C, [D])).not.toThrow();
+    expect(() => TagSystemRuleSet.builder().add(D, [A]).add(C, [D]).build()).toThrow();
+
+    expect(() => TagSystemRuleSet.builder().addStop(H).addStop(H)).toThrow();
+
+    expect(() => {
+      const ruleset = TagSystemRuleSet.builder().add(A, [B]).add(B, [A]).build();
+      ruleset.getCandinates(H);
+    }).toThrow();
   });
   it("ToStringTest", () => {
     const [A, B]: TagSystemLetter[] = TagSystemLetterFrom("A", "B");
@@ -111,47 +95,32 @@ describe("TagSystemTest", () => {
     }
   });
   it("MonkeyTagSystemTest", () => {
-    const [A, B, C, H]: TagSystemLetter[] = TagSystemLetterFrom("A", "B", "C", "H");
-    const ruleset = TagSystemRuleSet.builder()
-      .add(A, [A, B])
-      .add(A, [A, B])
-      .add(B, [C, H])
-      .addStop(B)
-      .addStop(H)
-      .addStop(H)
-      .build();
-    expect(() => new TagSystem(-9, ruleset)).toThrowError();
-    expect(() => new TagSystem(0, ruleset)).toThrowError();
+    const [A, B, C]: TagSystemLetter[] = TagSystemLetterFrom("A", "B", "C");
+    expect(() => {
+      const emptyRuleSet = TagSystemRuleSet.builder().build();
+      new TagSystem(2, emptyRuleSet);
+    }).not.toThrowError();
+    expect(() => {
+      const emptyRuleSet = TagSystemRuleSet.builder().build();
+      new TagSystem(-9, emptyRuleSet);
+    }).toThrowError();
+    expect(() => {
+      const emptyRuleSet = TagSystemRuleSet.builder().build();
+      new TagSystem(0, emptyRuleSet);
+    }).toThrowError();
+    expect(() => {
+      const ruleSet = TagSystemRuleSet.builder().add(A, [A, B]).add(B, [A, A]).build();
+      new TagSystem(2, ruleSet).start([C]);
+    }).toThrowError();
 
-    const ts1 = new TagSystem(2, ruleset);
+    const sampleRule = TagSystemRuleSet.builder().add(A, [A, B]).add(B, [A, B]).build();
+    const sampleTagSystem = new TagSystem(2, sampleRule);
+    expect(sampleTagSystem.getNowWord()).toBe(null);
 
-    expect(() => ts1.proceed(2)).toThrowError();
-    expect(ts1.getNowWord()).toBeNull();
-    ts1.start([]);
-    expect(() => ts1.proceed(-1)).toThrowError();
-    expect(ts1.isStopped()).toBe(false);
-    ts1.proceed(0);
-    expect(ts1.isStopped()).toBe(false);
-    ts1.proceed(1);
-    expect(ts1.isStopped()).toBe(true);
-    ts1.start([A]);
-    expect(ts1.isStopped()).toBe(false);
-    ts1.proceed();
-    expect(ts1.isStopped()).toBe(true);
-
-    const ts2 = new TagSystem(3, ruleset);
-    //ABCABC -> BCAB -> Error!!!
-    ts2.start([A, B, C, B, C]);
-    expect(() => ts2.proceed()).not.toThrowError();
-    expect(() => ts2.proceed()).toThrowError();
-    //ABCC -> CAB -> Error!!!
-    ts2.start([A, B, C, C]);
-    expect(() => ts2.proceed()).not.toThrowError();
-    expect(() => ts2.proceed()).toThrowError();
-
-    ts2.start([H, A, B]);
-    expect(ts2.isStopped()).toBe(false);
-    ts2.proceed();
-    expect(ts2.isStopped()).toBe(true);
+    expect(() => sampleTagSystem.proceed()).toThrowError();
+    sampleTagSystem.start([]);
+    expect(() => sampleTagSystem.proceed(-9)).toThrowError();
+    expect(() => sampleTagSystem.proceed()).not.toThrowError();
+    expect(sampleTagSystem.isStopped()).toBe(true);
   });
 });

@@ -1,5 +1,9 @@
 /**
  * Letters that make up the word to be processed in the tag system.
+ *
+ * @remarks In this library, letters are "equal" if the two characters are the same object.
+ * Simply having equal "value" does not make them equal characters.
+ *
  */
 export type TagSystemLetter = { readonly value: string };
 
@@ -35,21 +39,13 @@ function asWord(letters: TagSystemLetter[]) {
 
   return new (class implements TagSystemWord {
     asLetters(): TagSystemLetter[] {
-      return copy;
+      return [...copy];
     }
     toString(): string {
       return copy.map((letter) => letter.value).join("");
     }
   })();
 }
-
-/**
- * Rules for tag system behavior.
- */
-export type TagSystemRule = {
-  readonly firstLetter: TagSystemLetter;
-  readonly out: TagSystemRuleOutput;
-};
 
 /**
  * The information on what changes will occur after the rule is applied
@@ -59,35 +55,14 @@ export type TagSystemRuleOutput =
   | { readonly stop: false; readonly writeWord: TagSystemWord }
   | { readonly stop: true };
 
-class TagSystemEquality {
-  static ruleEquals(a: TagSystemRule, b: TagSystemRule) {
-    if (a.out.stop) {
-      return a.firstLetter === b.firstLetter && a.out.stop === b.out.stop;
-    } else {
-      if (a.out.stop !== b.out.stop) return false;
-      return a.firstLetter === b.firstLetter && this.wordEquals(a.out.writeWord, b.out.writeWord);
-    }
-  }
-
-  static wordEquals(a: TagSystemWord, b: TagSystemWord) {
-    const aLetter = a.asLetters();
-    const bLetter = b.asLetters();
-
-    if (aLetter.length !== bLetter.length) return false;
-
-    const diff = aLetter.filter((letter, index) => {
-      return letter.value !== bLetter[index].value;
-    });
-
-    return diff.length === 0;
-  }
-}
-
 /**
  * The tag system's program.
  *
  * @remarks
  * You should use {@link TagSystemRuleSet.builder} to construct this.
+ *
+ * @remarks
+ * For each character used, only one rule must be defined to convert it.
  */
 export class TagSystemRuleSet {
   /**
@@ -98,51 +73,52 @@ export class TagSystemRuleSet {
     return new TagSystemRuleSetBuilder();
   }
 
-  private readonly rules: TagSystemRule[] = [];
+  private readonly rules: Map<TagSystemLetter, TagSystemRuleOutput>;
+  private readonly usedLetters: Set<TagSystemLetter>;
 
   /**
    * Construct TagSystemRuleset with given rules.
    *
    * @remarks
    * This method is used by the library.
-   * Usually, users should use {@link TagSystemRuleSet.builder}.
+   * You must use {@link TagSystemRuleSet.builder}.
    *
    * @param rules list of rule.
    */
-  constructor(rules: TagSystemRule[]) {
-    this.rules = [...rules];
+  constructor(rules: Map<TagSystemLetter, TagSystemRuleOutput>) {
+    const usedLetters = new Set(rules.keys());
+
+    // For each character used, only one rule must be defined to convert it.
+    rules.forEach((rule) => {
+      if ("writeWord" in rule) {
+        rule.writeWord.asLetters().forEach((letter) => {
+          if (!usedLetters.has(letter)) throw new Error("Invalid rules.");
+        });
+      }
+    });
+
+    this.rules = new Map(rules);
+    this.usedLetters = usedLetters;
   }
 
   /**
    * Returns what kind of change occurred in the tag system when the given letter.
    * @param firstLetter first character of the word being processed.
-   * @returns list of what indicates kind of change
+   * @returns what indicates kind of change
    */
-  public getCandinates(firstLetter: TagSystemLetter) {
-    return this.rules.filter((rule) => rule.firstLetter === firstLetter).map((rule) => rule.out);
+  public getCandinates(firstLetter: TagSystemLetter): TagSystemRuleOutput {
+    const v = this.rules.get(firstLetter);
+    if (v === undefined) throw new Error(`Cannot find rule that transform "${firstLetter.value}"`);
+
+    return v;
   }
 
   /**
    * Returns all letters that this rule uses.
-   * @returns list of the letters
+   * @returns set of the letters
    */
-  public getAllUsedLetters() {
-    const letters: TagSystemLetter[] = [];
-
-    this.rules.forEach((rule) => {
-      if (letters.filter((l) => l.value === rule.firstLetter.value).length === 0) {
-        letters.push(rule.firstLetter);
-      }
-      if (!rule.out.stop) {
-        rule.out.writeWord.asLetters().forEach((letter) => {
-          if (letters.filter((l) => l.value === letter.value).length === 0) {
-            letters.push(letter);
-          }
-        });
-      }
-    });
-
-    return letters;
+  public getAllUsedLetters(): Set<TagSystemLetter> {
+    return this.usedLetters;
   }
 
   /**
@@ -155,12 +131,12 @@ export class TagSystemRuleSet {
     };
     return (
       "[" +
-      this.rules
-        .map((rule) => {
-          if (rule.out.stop) {
-            return `${v(rule.firstLetter)} → STOP`;
+      Array.from(this.rules)
+        .map(([firstLetter, out]) => {
+          if (out.stop) {
+            return `${v(firstLetter)} → STOP`;
           } else {
-            return `${v(rule.firstLetter)} → ${rule.out.writeWord}`;
+            return `${v(firstLetter)} → ${out.writeWord}`;
           }
         })
         .join(", ") +
@@ -171,10 +147,11 @@ export class TagSystemRuleSet {
 
 /**
  * A builder to build the tag system's ruleset.
+ *
  * @see {@link TagSystemRuleSet}
  */
 export class TagSystemRuleSetBuilder {
-  private rules: TagSystemRule[] = [];
+  private rules: Map<TagSystemLetter, TagSystemRuleOutput | undefined> = new Map();
 
   /**
    * Add rule to this builder.
@@ -183,22 +160,27 @@ export class TagSystemRuleSetBuilder {
    * The rule is interpreted as "When the first letter of a word is *firstLetter*, add *writeWord* after the word and delete the first *m* letters."
    * *m* is set by {@link TagSystem}.
    *
+   * @throws If a rule with the same "firstLetter" has already been added.
+   *
    * @param firstLetter
    * @param writeWord
    * @returns This builder, to method chains.
    */
   public add(firstLetter: TagSystemLetter, writeWord: TagSystemLetter[]) {
-    const e: TagSystemRule = {
-      firstLetter: firstLetter,
-      out: {
-        stop: false,
-        writeWord: asWord(writeWord),
-      },
-    };
-
-    if (this.rules.filter((a) => TagSystemEquality.ruleEquals(a, e)).length === 0) {
-      this.rules.push(e);
+    if (this.rules.has(firstLetter) && this.rules.get(firstLetter) !== undefined) {
+      throw new Error(`The firstLetter(${firstLetter.value}) was already used.`);
     }
+
+    writeWord
+      .filter((t) => !this.rules.has(t))
+      .forEach((letter) => {
+        this.rules.set(letter, undefined);
+      });
+
+    this.rules.set(firstLetter, {
+      stop: false,
+      writeWord: asWord(writeWord),
+    });
 
     return this;
   }
@@ -209,30 +191,54 @@ export class TagSystemRuleSetBuilder {
    * @remarks
    * The rule is interpreted as "When the first letter of a word is *firstLetter*, this tag system stops working."
    *
+   * @throws If a rule with the same "firstLetter" has already been added.
+   *
    * @param firstLetter
    * @returns This builder, to method chains.
    */
   public addStop(firstLetter: TagSystemLetter) {
-    const e: TagSystemRule = {
-      firstLetter: firstLetter,
-      out: {
-        stop: true,
-      },
-    };
-
-    if (this.rules.filter((a) => TagSystemEquality.ruleEquals(a, e)).length === 0) {
-      this.rules.push(e);
+    if (this.rules.has(firstLetter) && this.rules.get(firstLetter) !== undefined) {
+      throw new Error(`The firstLetter(${firstLetter.value}) was already used.`);
     }
+
+    this.rules.set(firstLetter, {
+      stop: true,
+    });
 
     return this;
   }
 
+  private hasNotUndefined(
+    map: Map<TagSystemLetter, TagSystemRuleOutput | undefined>
+  ): map is Map<TagSystemLetter, TagSystemRuleOutput> {
+    const errors: TagSystemLetter[] = [];
+    map.forEach((out, letter) => {
+      if (out === undefined) errors.push(letter);
+    });
+
+    if (errors.length > 0) {
+      throw new Error(
+        `No rules are defined for these letters:[${errors.map((l) => l.value).join(", ")}]`
+      );
+    }
+
+    return true;
+  }
+
   /**
    * Build the rule-set with the configured rules.
+   *
+   * @remarks When calling this function, only one rule must be defined for each character. Otherwise, it throws an error.
+   *
    * @returns Created rule-set.
    */
   public build() {
-    return new TagSystemRuleSet(this.rules);
+    if (this.hasNotUndefined(this.rules)) {
+      return new TagSystemRuleSet(this.rules);
+    } else {
+      //到達不可
+      throw new Error();
+    }
   }
 }
 
@@ -258,10 +264,22 @@ export class TagSystem {
 
   /**
    * Initiates processing for letters.
+   * @throws when a letters does not contain a letter defined by the conversion rules.
    * @param letters A word being processed.
    */
   public start(letters: TagSystemLetter[]) {
     this.letters = letters;
+
+    const usedLetters = this.ruleSet.getAllUsedLetters();
+    const errorLetters = letters.filter((letter) => !usedLetters.has(letter));
+    if (errorLetters.length > 0) {
+      throw new Error(
+        `No rules are defined for these letters:${errorLetters
+          .map((letter) => letter.value)
+          .join(", ")}`
+      );
+    }
+
     this.stop = false;
   }
 
@@ -292,15 +310,9 @@ export class TagSystem {
 
       const firstLetter = this.letters[0];
 
-      const candinateRules = this.ruleSet.getCandinates(firstLetter);
+      const candinateRule = this.ruleSet.getCandinates(firstLetter);
 
-      if (candinateRules.length > 1) {
-        throw new Error(`Many rules corresponding to {${firstLetter.value}} are defined.`);
-      } else if (candinateRules.length == 0) {
-        throw new Error(`The rule corresponding to {${firstLetter.value}} is not defined.`);
-      }
-
-      const action = candinateRules[0];
+      const action = candinateRule;
       if (action.stop) {
         this.stop = true;
         break;
