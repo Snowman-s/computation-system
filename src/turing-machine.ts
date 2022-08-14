@@ -60,6 +60,12 @@ export type TMRule = {
   readonly out: TMRuleOutput;
 };
 
+export type TMConfiguration = {
+  nowState: TMState;
+  tape: ILockedTMTape;
+  headPosition: number;
+};
+
 class TMEquality {
   static ruleEquals(a: TMRule, b: TMRule) {
     if (a.out.move === "HALT") {
@@ -335,6 +341,9 @@ export class TMTape {
       toString(): string {
         return clone.toString();
       }
+      getWrittenRange(): { left: number; right: number } {
+        return { left: clone.minIndex, right: clone.maxIndex };
+      }
     })();
   }
 
@@ -358,6 +367,8 @@ export interface ILockedTMTape {
    * @returns If written something on *n*th location, return it. If not, return blank symbol, specified by the machine.
    */
   read(n: number): TMSymbol;
+
+  getWrittenRange(): { left: number; right: number };
   /**
    * Returns string representation of this tape.
    * @returns String representation of this tape.
@@ -415,7 +426,9 @@ export class TuringMachine {
    * @param headPosition Relative position of the head at the start of processing.
    * For Instance, "3" means to start from word[3], and "-1" means to start from the blank symbol to the left of the word.
    */
-  public start(word: TMSymbol[], headPosition: number) {
+  public start(input: [word: TMSymbol[], headPosition: number]) {
+    const [word, headPosition] = input;
+
     this.initialWord = [...word];
     this.tape = TMTape.create(word, this.blank);
     this.headPosition = headPosition;
@@ -545,7 +558,7 @@ export class TuringMachine {
    *
    * @returns Current status of this machine if {@link TuringMachine.start} was called, false otherwise.
    */
-  public getConfiguration() {
+  public getConfiguration(): TMConfiguration | null {
     if (this.tape === null || this.nowState === null) {
       return null;
     } else {

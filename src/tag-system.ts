@@ -7,6 +7,8 @@
  */
 export type TagSystemLetter = { readonly value: string };
 
+export type TagSystemConfiguration = { word: TagSystemWord };
+
 /**
  * Create TagSystemLetter list with each element of strs as its representation.
  * @param strs List of string representation corresponding to each letter that will be created.
@@ -34,7 +36,7 @@ export interface TagSystemWord {
   toString(): string;
 }
 
-function asWord(letters: TagSystemLetter[]) {
+function asWord(letters: TagSystemLetter[]): TagSystemWord {
   const copy = [...letters];
 
   return new (class implements TagSystemWord {
@@ -267,7 +269,9 @@ export class TagSystem {
    * @throws when a letters does not contain a letter defined by the conversion rules.
    * @param letters A word being processed.
    */
-  public start(letters: TagSystemLetter[]) {
+  public start(input: [letters: TagSystemLetter[]]) {
+    const [letters] = input;
+
     this.letters = letters;
 
     const usedLetters = this.ruleSet.getAllUsedLetters();
@@ -361,6 +365,12 @@ export class TagSystem {
     if (this.letters === null) return null;
 
     return asWord(this.letters);
+  }
+
+  public getConfiguration(): TagSystemConfiguration | null {
+    const word = this.getNowWord();
+
+    return word === null ? null : { word: word };
   }
 
   /**

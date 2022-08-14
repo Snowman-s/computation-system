@@ -65,7 +65,7 @@ describe("TagSystemTest", () => {
     expect(ts.asTuple().letterSet).toContain(c);
     expect(ts.asTuple().letterSet).toContain(H);
     expect(ts.asTuple().ruleSet).toEqual(ruleset);
-    ts.start([b, a, a]);
+    ts.start([[b, a, a]]);
     expect(ts.isStopped()).toBe(false);
     ts.proceed(1);
     const word1 = ts.getNowWord();
@@ -110,7 +110,7 @@ describe("TagSystemTest", () => {
     }).toThrowError();
     expect(() => {
       const ruleSet = TagSystemRuleSet.builder().add(A, [A, B]).add(B, [A, A]).build();
-      new TagSystem(2, ruleSet).start([C]);
+      new TagSystem(2, ruleSet).start([[C]]);
     }).toThrowError();
 
     const sampleRule = TagSystemRuleSet.builder().add(A, [A, B]).add(B, [A, B]).build();
@@ -118,7 +118,7 @@ describe("TagSystemTest", () => {
     expect(sampleTagSystem.getNowWord()).toBe(null);
 
     expect(() => sampleTagSystem.proceed()).toThrowError();
-    sampleTagSystem.start([]);
+    sampleTagSystem.start([[]]);
     expect(() => sampleTagSystem.proceed(-9)).toThrowError();
     expect(() => sampleTagSystem.proceed()).not.toThrowError();
     expect(sampleTagSystem.isStopped()).toBe(true);

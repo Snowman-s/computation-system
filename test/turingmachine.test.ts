@@ -166,7 +166,7 @@ describe("TuringMachine", function () {
     //スタート前
     expect(() => tm.proceed()).toThrowError();
 
-    tm.start([A, A, B, B], 0);
+    tm.start([[A, A, B, B], 0]);
 
     tm.proceed(3);
 
@@ -195,7 +195,7 @@ describe("TuringMachine", function () {
       .build();
 
     let tm = new TuringMachine(Blank, ruleset, q1);
-    tm.start([A, A, B, B], 0);
+    tm.start([[A, A, B, B], 0]);
 
     tm.proceed(3);
     expect(tm.isHalted()).toEqual(false);
@@ -211,7 +211,7 @@ describe("TuringMachine", function () {
     let ruleset = TMRuleSet.builder().state(q1).addHALT(Blank).build();
 
     let tm = new TuringMachine(Blank, ruleset, q1);
-    tm.start([], 0);
+    tm.start([[], 0]);
 
     expect(() => tm.proceed()).not.toThrowError();
     expect(tm.isHalted()).toBe(true);
@@ -260,7 +260,7 @@ describe("TuringMachine", function () {
     const beforeConfig = tm.getConfiguration();
     expect(beforeConfig).toBeNull();
 
-    tm.start([A, A, B, B], 0);
+    tm.start([[A, A, B, B], 0]);
 
     tm.proceed(3);
 
@@ -284,7 +284,7 @@ describe("TuringMachine", function () {
       .build();
 
     let tm = new TuringMachine(Blank, ruleset, q1);
-    tm.start([A, C], 0);
+    tm.start([[A, C], 0]);
 
     expect(() => tm.proceed(-1)).toThrowError();
 
@@ -293,7 +293,7 @@ describe("TuringMachine", function () {
     //複数候補
     expect(() => tm.proceed()).toThrowError();
 
-    tm.start([Blank, A, D], 1);
+    tm.start([[Blank, A, D], 1]);
     expect(() => tm.proceed(3)).not.toThrowError();
     //候補なし
     expect(() => tm.proceed()).toThrowError();
