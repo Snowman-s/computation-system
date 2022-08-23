@@ -373,6 +373,10 @@ export class TagSystem {
     return word === null ? null : { word: word };
   }
 
+  public clone(): TagSystem {
+    return new TagSystem(this.deleteNum, this.ruleSet);
+  }
+
   /**
    * Returns string representation of this system.
    * @returns String representation of this system.

@@ -118,7 +118,9 @@ describe("TagSystemTest", () => {
     expect(sampleTagSystem.getNowWord()).toBe(null);
 
     expect(() => sampleTagSystem.proceed()).toThrowError();
+    expect(sampleTagSystem.getConfiguration()).toBeNull();
     sampleTagSystem.start([[]]);
+    expect(sampleTagSystem.getConfiguration()!.word.toString()).toBe("");
     expect(() => sampleTagSystem.proceed(-9)).toThrowError();
     expect(() => sampleTagSystem.proceed()).not.toThrowError();
     expect(sampleTagSystem.isStopped()).toBe(true);

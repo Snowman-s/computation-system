@@ -1,11 +1,4 @@
-import {
-  TagSystem,
-  TagSystemConfiguration,
-  TagSystemLetter,
-  TagSystemLetterFrom,
-  TagSystemRuleSet,
-  TagSystemWord,
-} from "./tag-system";
+import { TagSystem, TagSystemConfiguration, TagSystemLetter, TagSystemWord } from "./tag-system";
 import {
   TMConfiguration,
   TMRuleSet,
@@ -69,7 +62,7 @@ export class Converter {
       .add(E, D, "L")
 
       .add(F, H, "R")
-      .add(G, I, "R")
+      .add(G, J, "R")
       .add(H, F, "L")
       .add(I, F, "R")
       .add(J, I, "L")
@@ -78,38 +71,58 @@ export class Converter {
 
       .add(M, B, "L", q2)
       .add(N, O, "R")
-      .add(O, P, "R")
-      .add(P, Q, "R")
+      .add(O, P, "L")
+      .add(P, Q, "R", q2)
       .addHALT(Q)
       .add(R, C, "R")
 
       .state(q2)
       .add(A, C, "R")
       .add(B, C, "R")
-      .add(C, D, "L")
+      .add(C, B, "L")
       .add(D, E, "R")
       .add(E, A, "L")
 
-      .add(F, K, "R")
+      .add(F, K, "R", q1)
       .add(G, H, "R")
       .add(H, G, "L")
       .add(I, J, "R")
       .add(J, G, "L")
-      .add(K, F, "R")
+      .add(K, F, "R", q1)
       .add(L, J, "R")
 
       .add(M, O, "R")
       .add(N, O, "R")
       .add(O, N, "L")
       .add(P, R, "R")
-      .add(Q, R, "L")
+      .add(Q, R, "L", q1)
       .add(R, M, "L")
 
       .build();
-    const tm = new TuringMachine(E, tmRule, q1);
+    const tm = new TuringMachine(C, tmRule, q1);
+
     const tuple = { ...tm.asTuple() };
 
     const transformElement = new (class implements ITransformElement<TagSystem, TuringMachine> {
+      asTuple(): {
+        stateSet: Set<TMState>;
+        symbolSet: Set<TMSymbol>;
+        blankSymbol: TMSymbol;
+        inputSymbolSet: Set<TMSymbol>;
+        ruleset: TMRuleSet;
+        initState: TMState;
+        acceptState: TMState | null;
+      } {
+        return tuple;
+      }
+      asIndependantSystem(): TuringMachine {
+        return new TuringMachine(
+          tuple.blankSymbol,
+          tuple.ruleset,
+          tuple.initState,
+          tuple.acceptState
+        );
+      }
       private transformTable: [
         letter: TagSystemLetter,
         output: TagSystemWord | "STOP",
@@ -128,37 +141,39 @@ export class Converter {
 
         let letters: TagSystemLetter[] = [];
         let stopped = false;
-        if (tape.read(range.left) === Q) {
+        if (tape.read(range.left + 1) === R) {
           //Last letter must be STOP.
           letters.push(this.transformTable[this.transformTable.length - 1][0]);
           stopped = true;
         }
 
-        let symbolsChanged = false;
-        if (!stopped) {
-          for (let i = range.left; i < this.startHead; i++) {
-            const read = tape.read(i);
-            if (read !== A && read !== F) {
-              symbolsChanged = true;
-              letters.push(TagSystemLetterFrom("?")[0]);
-              break;
+        if (!stopped && real.headPosition !== this.startHead) return null;
+
+        let i = range.left;
+        for (; i <= this.startHead; i++) {
+          if (!stopped) {
+            if (tape.read(i) !== A && tape.read(i) !== F && tape.read(i) !== Q) {
+              return null;
             }
           }
         }
-
-        let foundFirstC = symbolsChanged;
-        for (let i = this.startHead + 1, oneCount = 0; i <= range.right; i++) {
+        //最初のRをskip
+        while (tape.read(i) === R) {
+          i++;
+        }
+        for (let oneCount = 0; i <= range.right; i++) {
           const read = tape.read(i);
-          foundFirstC ||= read === M;
-          if (!foundFirstC) continue;
           if (read === M) {
-            if (oneCount === 0) continue;
             const letterCandinate = this.transformTable.find((elm) => elm[2] === oneCount)?.[0];
             if (letterCandinate === undefined) {
               return null;
             }
+            letters.push(letterCandinate);
+            oneCount = 0;
           } else if (read === A) {
             oneCount++;
+          } else if (stopped && read === B) {
+            continue;
           } else {
             return null;
           }
@@ -193,7 +208,7 @@ export class Converter {
           })
           .reduce((a, b) => [...a, ...b]);
 
-        const rules = this.transformTable
+        const rules = [...this.transformTable]
           .reverse()
           .map((elm) => elm[4])
           .reduce((a, b) => [...a, ...b]);
@@ -204,11 +219,7 @@ export class Converter {
 
         return [word, this.startHead];
       }
-      bind(system: {
-        deleteNum: number;
-        letterSet: Set<TagSystemLetter>;
-        ruleSet: TagSystemRuleSet;
-      }): void {
+      bind(system: SystemTuple<TagSystem>): void {
         if (system.deleteNum !== 2) throw new Error("TagSystem's delete number must be 2.");
 
         const ruleSet = system.ruleSet;
@@ -306,17 +317,6 @@ export class Converter {
           return [a, b, c, d, e];
         });
       }
-      asTuple(): {
-        stateSet: Set<TMState>;
-        symbolSet: Set<TMSymbol>;
-        blankSymbol: TMSymbol;
-        inputSymbolSet: Set<TMSymbol>;
-        ruleset: TMRuleSet;
-        initState: TMState;
-        acceptState: TMState | null;
-      } {
-        return tuple;
-      }
     })();
 
     return [transformElement, tm];
@@ -331,11 +331,12 @@ export type SystemConfigration<T extends ComputationSystem> = Exclude<
 >;
 export type SystemTuple<T extends ComputationSystem> = ReturnType<T["asTuple"]>;
 
-interface ITransformElement<Take extends ComputationSystem, As extends ComputationSystem> {
+export interface ITransformElement<Take extends ComputationSystem, As extends ComputationSystem> {
   interpretConfigration(real: SystemConfigration<As> | null): SystemConfigration<Take> | null;
   interpretInput(virtual: SystemInput<Take>): SystemInput<As>;
   bind(system: SystemTuple<Take>): void;
   asTuple(): SystemTuple<As>;
+  asIndependantSystem(): As;
 }
 
 type SystemsAsHierarchyElements<S extends ComputationSystem[] | unknown> =
@@ -349,15 +350,17 @@ export type Remove2<T extends unknown[]> = T extends [infer _, infer _, ...infer
   ? Rests
   : unknown[];
 export type Remove1<T extends unknown[]> = T extends [infer _, ...infer Rests] ? Rests : unknown[];
-export type FirstOf<T extends unknown[]> = T[0];
+export type FirstOf<T extends unknown[]> = T extends [infer F, ...infer _] ? F : T[0];
 export type LastOf<T extends unknown[]> = T extends [...infer _, infer Last] ? Last : T[0];
 
 export interface ITransformHierarchy<S extends ComputationSystem[]> {
-  start(inputSystem: SystemTuple<FirstOf<S>>, input: SystemInput<FirstOf<S>>): void;
+  start(inputSystem: FirstOf<S>, input: SystemInput<FirstOf<S>>): void;
 
   proceed(step: number): void;
+  stopped(): boolean;
   getConfiguration<N extends number>(system: N): SystemConfigration<S[N]> | null;
-  getBaseSystem(): LastOf<S>;
+  getTuple<N extends number>(system: N): SystemTuple<S[N]> | null;
+  asIndependantSystem<N extends number>(system: N): S[N] | null;
   appendLastAndNewHierarchy<Add extends ComputationSystem>(
     append: ITransformElement<LastOf<S>, Add>,
     newBase: Add
@@ -367,17 +370,21 @@ export interface ITransformHierarchy<S extends ComputationSystem[]> {
 export class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHierarchy<S> {
   private elements: SystemsAsHierarchyElements<S>;
   private baseSystem: LastOf<S>;
+  private inputSystemSample: FirstOf<S> | null = null;
 
   public constructor(elements: SystemsAsHierarchyElements<S>, baseSystem: LastOf<S>) {
     this.elements = elements;
-    this.baseSystem = baseSystem;
+    this.baseSystem = baseSystem.clone() as LastOf<S>;
   }
 
-  start(
-    inputSystem: ReturnType<FirstOf<S>["asTuple"]>,
-    input: Parameters<FirstOf<S>["start"]>[0]
-  ): void {
-    let tuple: ReturnType<ComputationSystem["asTuple"]> = inputSystem;
+  stopped(): boolean {
+    return this.baseSystem.isStopped();
+  }
+
+  start(inputSystem: FirstOf<S>, input: Parameters<FirstOf<S>["start"]>[0]): void {
+    this.inputSystemSample = inputSystem.clone() as FirstOf<S>;
+
+    let tuple: ReturnType<ComputationSystem["asTuple"]> = inputSystem.asTuple();
 
     this.elements.forEach((elm) => {
       elm.bind(tuple);
@@ -392,7 +399,7 @@ export class TransformHierarchy<S extends ComputationSystem[]> implements ITrans
   }
 
   proceed(step: number): void {
-    throw new Error("Method not implemented.");
+    this.baseSystem.proceed(step);
   }
 
   getConfiguration<N extends number>(
@@ -409,8 +416,36 @@ export class TransformHierarchy<S extends ComputationSystem[]> implements ITrans
     return ret as Exclude<ReturnType<S[N]["getConfiguration"]>, null> | null;
   }
 
-  getBaseSystem(): LastOf<S> {
-    return this.baseSystem;
+  getTuple<N extends number>(system: N): ReturnType<S[N]["asTuple"]> | null {
+    let ret: SystemTuple<ComputationSystem> | null;
+
+    if (system === 0) {
+      if (this.inputSystemSample === null) {
+        ret = null;
+      } else {
+        ret = this.inputSystemSample.asTuple();
+      }
+    } else {
+      ret = this.elements[system - 1].asTuple();
+    }
+
+    return ret as ReturnType<S[N]["asTuple"]> | null;
+  }
+
+  asIndependantSystem<N extends number>(system: N): S[N] | null {
+    let ret: ComputationSystem | null;
+
+    if (system === 0) {
+      if (this.inputSystemSample === null) {
+        ret = null;
+      } else {
+        ret = this.inputSystemSample.clone();
+      }
+    } else {
+      ret = this.elements[system - 1].asIndependantSystem();
+    }
+
+    return ret as S[N];
   }
 
   appendLastAndNewHierarchy<Add extends ComputationSystem>(

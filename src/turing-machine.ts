@@ -513,6 +513,10 @@ export class TuringMachine {
     return this.halt;
   }
 
+  public isStopped() {
+    return this.halt || this.isAccepted();
+  }
+
   /**
    * Returns a tuple representation of this machine.
    *
@@ -568,6 +572,10 @@ export class TuringMachine {
         headPosition: this.headPosition,
       };
     }
+  }
+
+  public clone(): TuringMachine {
+    return new TuringMachine(this.blank, this.ruleset, this.initState, this.acceptState);
   }
 
   /**
