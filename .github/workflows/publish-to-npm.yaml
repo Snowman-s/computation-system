@@ -38,6 +38,8 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
       - name: Publish
-        run: npm publish --access=public
+        uses: mmarchini-oss/npm-otp-publish@v0
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
+          npm_token: ${{ secrets.NODE_AUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_actor: ${{ github.actor }}
