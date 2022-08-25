@@ -8,6 +8,13 @@ jobs:
   publish-to-npm:
     runs-on: ubuntu-latest
     steps:
+      - name: SetUpForOTP
+        uses: GoogleCloudPlatform/release-please-action@v1.6.3
+        id: release
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          release-type: node
+          package-name: "computation-system"
       - name: Checkout
         uses: actions/checkout@v1
       - name: Use Node.js And Setup .npmrc
