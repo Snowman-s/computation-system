@@ -264,7 +264,7 @@ export class Converter {
             elm[2] = 1;
           } else {
             const beforeRuleOutput = table[i - 1][1];
-            //should not be happend
+            /* istanbul ignore next */
             if (beforeRuleOutput === "STOP" || beforeRuleOutput === undefined)
               throw new Error("Internal Error!");
 
@@ -279,6 +279,7 @@ export class Converter {
           if (elm[1] === "STOP") {
             elm[4] = [Q, Q];
           } else {
+            /* istanbul ignore next */
             if (elm[1] === undefined) throw new Error("Internal Error!");
 
             const outputLetters = [...elm[1].asLetters()];
@@ -286,8 +287,10 @@ export class Converter {
               const letterData = table
                 .map<[TagSystemLetter | undefined, number]>((elm, index) => [elm[0], index])
                 .find((letterAndIndex) => letterAndIndex[0] === mapLetter);
+              /* istanbul ignore next */
               if (letterData === undefined) throw new Error("Internal Error!");
               const ret = table[letterData[1]][3];
+              /* istanbul ignore next */
               if (ret === undefined) throw new Error("Internal Error!");
               return ret;
             });
@@ -305,6 +308,7 @@ export class Converter {
 
         this.transformTable = table.map((elm) => {
           const [a, b, c, d, e] = elm;
+          /* istanbul ignore next */
           if (
             a === undefined ||
             b === undefined ||
@@ -382,8 +386,6 @@ export class TransformHierarchy<S extends ComputationSystem[]> implements ITrans
   }
 
   start(inputSystem: FirstOf<S>, input: Parameters<FirstOf<S>["start"]>[0]): void {
-    this.inputSystemSample = inputSystem.clone() as FirstOf<S>;
-
     let tuple: ReturnType<ComputationSystem["asTuple"]> = inputSystem.asTuple();
 
     this.elements.forEach((elm) => {
@@ -396,6 +398,8 @@ export class TransformHierarchy<S extends ComputationSystem[]> implements ITrans
       inputCopy = elm.interpretInput(inputCopy);
     });
     this.baseSystem.start(inputCopy as any);
+
+    this.inputSystemSample = inputSystem.clone() as FirstOf<S>;
   }
 
   proceed(step: number): void {
