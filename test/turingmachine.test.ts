@@ -1,5 +1,4 @@
 import {
-  TMMove,
   TMRuleSet,
   TMState,
   TMStateFrom,
@@ -7,7 +6,7 @@ import {
   TMSymbolFrom,
   TMTape,
   TuringMachine,
-} from "../src/turing-machine";
+} from "../src/computation-system";
 
 describe("TMTape", function () {
   it("CreateTapeTest", () => {
