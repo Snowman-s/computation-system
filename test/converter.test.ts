@@ -1,13 +1,13 @@
 import {
   TagSystem,
   TagSystemConfiguration,
-  TagSystemLetter,
   TagSystemLetterFrom,
   TagSystemRuleSet,
   TagSystemWord,
-} from "../src/tag-system";
-import { TuringMachine } from "../src/turing-machine";
-import { Converter, ITransformHierarchy } from "../src/converter";
+  TuringMachine,
+  Converter,
+  ITransformHierarchy,
+} from "../src/computation-system";
 
 describe("ConverterTest", () => {
   it("TagSystem2TuringMachine", () => {

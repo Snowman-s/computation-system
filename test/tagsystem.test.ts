@@ -3,7 +3,7 @@ import {
   TagSystemLetter,
   TagSystemLetterFrom,
   TagSystemRuleSet,
-} from "../src/tag-system";
+} from "../src/computation-system";
 
 describe("TagSystemRule", () => {
   it("NormalTagSystemRuleTest", () => {
