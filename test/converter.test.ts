@@ -1,3 +1,4 @@
+import exp from "constants";
 import {
   TagSystem,
   TagSystemConfiguration,
@@ -7,6 +8,7 @@ import {
   TuringMachine,
   Converter,
   ITransformHierarchy,
+  TransformLogTableElm,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -56,6 +58,27 @@ describe("ConverterTest", () => {
 
     expect(transformHierarchy.asIndependantSystem(0)).toBeInstanceOf(TagSystem);
     expect(transformHierarchy.asIndependantSystem(1)).toBeInstanceOf(TuringMachine);
+
+    let table = transformHierarchy.getTransFormLogTable(0)!;
+    let mapper = function mapper(elm: TransformLogTableElm): any {
+      if ("value" in elm) {
+        return elm.value;
+      } else if (Array.isArray(elm)) {
+        return elm.map((elm2) => mapper(elm2));
+      } else {
+        return elm.toString();
+      }
+    };
+    //その解釈結果が何の文字か？
+    expect(mapper(table[0][0])).toBe("A");
+    //その文字は何を出力するか？
+    expect(mapper(table[1][1])).toBe("A");
+    //その文字はどう表現されるか？
+    expect(mapper(table[1][3])).toEqual(["A", "A", "A", "A"]);
+    //その文字の出力はどう表現されるか？
+    expect(mapper(table[1][4])).toEqual(["F", "F", "A"]);
+    //その文字の出力はどう表現されるか？ (STOP命令)
+    expect(mapper(table[2][4])).toEqual(["Q", "Q"]);
   });
   it("MonkeyTagSystem2TuringMachine", () => {
     const [A, B, H] = TagSystemLetterFrom("A", "B", "H");
@@ -76,8 +99,11 @@ describe("ConverterTest", () => {
     expect(transformHierarchy.getTuple(0)).toBeNull();
     expect(transformHierarchy.getConfiguration(0)).toBeNull();
     expect(transformHierarchy.asIndependantSystem(0)).toBeNull();
+    expect(transformHierarchy.getTransFormLogTable(0)).toBeNull();
     transformHierarchy.start(validTagSystem, [[A, B, B]]);
     expect(transformHierarchy.getTuple(0)).toEqual(validTagSystem.asTuple());
     expect(transformHierarchy.asIndependantSystem(0)).not.toBeNull();
+
+    expect(() => transformHierarchy.getTransFormLogTable(1)).toThrowError();
   });
 });
