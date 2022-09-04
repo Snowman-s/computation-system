@@ -1,3 +1,4 @@
+import { table } from "console";
 import { TagSystem, TagSystemConfiguration, TagSystemLetter, TagSystemWord } from "./tag-system";
 import {
   TMConfiguration,
@@ -8,6 +9,9 @@ import {
   TMSymbolFrom,
   TuringMachine,
 } from "./turing-machine";
+
+export type TransformLogTableElm = { value: string } | { toString(): string };
+export type TransformLogTable = (TransformLogTableElm | TransformLogTableElm[])[][];
 
 export class Converter {
   private constructor() {}
@@ -240,6 +244,9 @@ export class Converter {
 
           organizedLetters.push(v);
         });
+
+        organizedLetters.sort((a, b) => (a.value > b.value ? 1 : -1));
+
         if (stopLetter !== null) organizedLetters.push(stopLetter);
 
         let table: [
@@ -321,6 +328,10 @@ export class Converter {
           return [a, b, c, d, e];
         });
       }
+
+      getTransFormLogTable(): ({ value: string } | { toString: () => string })[][] {
+        return this.transformTable;
+      }
     })();
 
     return [transformElement, tm];
@@ -341,6 +352,7 @@ export interface ITransformElement<Take extends ComputationSystem, As extends Co
   bind(system: SystemTuple<Take>): void;
   asTuple(): SystemTuple<As>;
   asIndependantSystem(): As;
+  getTransFormLogTable(): TransformLogTable;
 }
 
 type SystemsAsHierarchyElements<S extends ComputationSystem[] | unknown> =
@@ -365,13 +377,14 @@ export interface ITransformHierarchy<S extends ComputationSystem[]> {
   getConfiguration<N extends number>(system: N): SystemConfigration<S[N]> | null;
   getTuple<N extends number>(system: N): SystemTuple<S[N]> | null;
   asIndependantSystem<N extends number>(system: N): S[N] | null;
+  getTransFormLogTable(smallerSystem: number): TransformLogTable | null;
   appendLastAndNewHierarchy<Add extends ComputationSystem>(
     append: ITransformElement<LastOf<S>, Add>,
     newBase: Add
   ): ITransformHierarchy<[...S, Add]>;
 }
 
-export class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHierarchy<S> {
+class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHierarchy<S> {
   private elements: SystemsAsHierarchyElements<S>;
   private baseSystem: LastOf<S>;
   private inputSystemSample: FirstOf<S> | null = null;
@@ -379,6 +392,12 @@ export class TransformHierarchy<S extends ComputationSystem[]> implements ITrans
   public constructor(elements: SystemsAsHierarchyElements<S>, baseSystem: LastOf<S>) {
     this.elements = elements;
     this.baseSystem = baseSystem.clone() as LastOf<S>;
+  }
+
+  getTransFormLogTable(smallerSystem: number): TransformLogTable | null {
+    return this.inputSystemSample === null
+      ? null
+      : this.elements[smallerSystem].getTransFormLogTable();
   }
 
   stopped(): boolean {

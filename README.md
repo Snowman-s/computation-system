@@ -50,7 +50,7 @@ console.log(afterConfig.tape.toString());
 - Turing Machine
 - Tag System
 
-### Convert
+### Convert (Beta)
 
 - "Turing Machine" simulates "2-Tag System"
 
