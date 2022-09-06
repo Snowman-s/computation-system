@@ -16,6 +16,10 @@ export type TransformLogTable = (TransformLogTableElm | TransformLogTableElm[])[
 export class Converter {
   private constructor() {}
 
+  /**
+   * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
+Science, 168(2):215–240, 1996.
+   */
   public static tag2SystemToTuringMachine218<
     S extends [...ComputationSystem[], TagSystem] = [TagSystem]
   >(hierarchy: ITransformHierarchy<S>): ITransformHierarchy<[...S, TuringMachine]> {
@@ -23,14 +27,16 @@ export class Converter {
 
     return hierarchy.appendLastAndNewHierarchy<TuringMachine>(result[0], result[1]);
   }
-
+  /**
+ * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
+Science, 168(2):215–240, 1996.
+ */
   public static tag2SystemToTuringMachine218New(): ITransformHierarchy<[TagSystem, TuringMachine]> {
     let result = this._tag2SystemToTuringMachine218();
 
     return new TransformHierarchy<[TagSystem, TuringMachine]>([result[0]], result[1]);
   }
 
-  //https://www.sciencedirect.com/science/article/pii/S0304397596000771
   private static _tag2SystemToTuringMachine218(): [
     ITransformElement<TagSystem, TuringMachine>,
     TuringMachine
