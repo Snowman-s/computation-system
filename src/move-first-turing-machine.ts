@@ -1,106 +1,42 @@
-// この似通った二つを適切に区別する為、meaningを定義
+import {
+  ComputationSystem,
+  TMConfiguration,
+  TMMove,
+  TMState,
+  TMSymbol,
+  TMTape,
+} from "./computation-system";
 
-import { ComputationSystem } from "./computation-system";
+export type MoveFirstTMRuleOutput = {
+  readonly write: TMSymbol;
+  readonly move: TMMove;
+  readonly changeStates: readonly {
+    readonly read: TMSymbol;
+    readonly thenGoTo: TMState | "HALT";
+  }[];
+};
 
-/**
- * The turing machine's "state", or in other words, what determines which rules are executed.
- */
-export type TMState = { readonly value: string; readonly meaning: "state" };
-/**
- * The turing machine's symbols on the tape.
- */
-export type TMSymbol = { readonly value: string; readonly meaning: "symbol" };
-
-/**
- * Create TMState list with each element of strs as its representation.
- * @param strs List of string representation corresponding to each state that will be created
- * @returns Created state list, whose length is the same as "strs"
- */
-export function TMStateFrom(...strs: string[]): TMState[] {
-  return strs.map((str) => {
-    return {
-      value: str,
-      meaning: "state",
-    };
-  });
-}
-
-/**
- * Create TMSymbol list with each element of strs as its representation.
- * @param strs List of string representation corresponding to each symbol that will be created
- * @returns Created symbol list, whose length is the same as "strs"
- */
-export function TMSymbolFrom(...strs: string[]): TMSymbol[] {
-  return strs.map((str) => {
-    return {
-      value: str,
-      meaning: "symbol",
-    };
-  });
-}
-
-/**
- * Movement of the head of the Turing machine.
- * @remarks "L" means left, "R" means right.
- */
-export type TMMove = "L" | "R";
-
-/**
- * The information on what changes will occur after the rule is applied
- * @see {@link TMRule}
- */
-export type TMRuleOutput =
-  | { readonly write: TMSymbol; readonly move: TMMove; readonly nextState: TMState }
-  | { readonly move: "HALT" };
-
-/**
- * What indicates the operation of the head of a Turing machine
- * @see {@link TMRuleSet}
- */
-export type TMRule = {
+export type MoveFirstTMRule = {
   readonly nowState: TMState;
-  readonly read: TMSymbol;
-  readonly out: TMRuleOutput;
+  readonly out: MoveFirstTMRuleOutput;
 };
-
-export type TMConfiguration = {
-  nowState: TMState;
-  tape: ILockedTMTape;
-  headPosition: number;
-};
-
-class TMEquality {
-  static ruleEquals(a: TMRule, b: TMRule) {
-    if (a.out.move === "HALT") {
-      return a.nowState === b.nowState && a.read === b.read && a.out.move === b.out.move;
-    } else {
-      if (a.out.move !== b.out.move) return false;
-      return (
-        a.nowState === b.nowState &&
-        a.read === b.read &&
-        a.out.nextState == b.out.nextState &&
-        a.out.write == b.out.write
-      );
-    }
-  }
-}
 
 /**
- * The turing machine's program.
+ * The Move-First Turing Machine's program.
  *
  * @remarks
- * You should use {@link TMRuleSet.builder} to construct this.
+ * You should use {@link MoveFirstTMRuleSet.builder} to construct this.
  */
-export class TMRuleSet {
+export class MoveFirstTMRuleSet {
   /**
    * Create builder for TMRuleSet.
    * @returns created builder
    */
   public static builder() {
-    return new TMRuleSetBuilder();
+    return new MoveFirstTMRuleSetBuilder();
   }
 
-  private readonly rules: TMRule[] = [];
+  private readonly rules: MoveFirstTMRule[] = [];
 
   /**
    * Construct TMRuleset with given rules.
@@ -111,7 +47,7 @@ export class TMRuleSet {
    *
    * @param rules list of rule
    */
-  constructor(rules: TMRule[]) {
+  constructor(rules: MoveFirstTMRule[]) {
     this.rules = [...rules];
   }
 
@@ -121,10 +57,8 @@ export class TMRuleSet {
    * @param nowSymbol symbol read on the turing machine
    * @returns list of what indicates kind of change
    */
-  public getCandinates(state: TMState, nowSymbol: TMSymbol) {
-    return this.rules
-      .filter((rule) => rule.nowState == state && rule.read == nowSymbol)
-      .map((rule) => rule.out);
+  public getCandinates(state: TMState) {
+    return this.rules.filter((rule) => rule.nowState == state).map((rule) => rule.out);
   }
 
   /**
@@ -135,10 +69,10 @@ export class TMRuleSet {
     const symbols = new Set<TMSymbol>();
 
     this.rules.forEach((rule) => {
-      symbols.add(rule.read);
-      if (rule.out.move !== "HALT") {
-        symbols.add(rule.out.write);
-      }
+      symbols.add(rule.out.write);
+      rule.out.changeStates.forEach((changeState) => {
+        symbols.add(changeState.read);
+      });
     });
 
     return symbols;
@@ -153,9 +87,11 @@ export class TMRuleSet {
 
     this.rules.forEach((rule) => {
       states.add(rule.nowState);
-      if (rule.out.move !== "HALT") {
-        states.add(rule.out.nextState);
-      }
+      rule.out.changeStates.forEach((changeState) => {
+        if (changeState.thenGoTo !== "HALT") {
+          states.add(changeState.thenGoTo);
+        }
+      });
     });
 
     return states;
@@ -173,13 +109,18 @@ export class TMRuleSet {
       "[" +
       this.rules
         .map((rule) => {
-          if (rule.out.move === "HALT") {
-            return `${v(rule.nowState)} ${v(rule.read)}  ―`;
-          } else {
-            return `${v(rule.nowState)} ${v(rule.read)}${v(rule.out.write)} ${rule.out.move[0]}${v(
-              rule.out.nextState
-            )}`;
-          }
+          return `${v(rule.nowState)} ${v(rule.out.write)}${rule.out.move}${
+            "[" +
+            rule.out.changeStates
+              .map((changeState) =>
+                [
+                  v(changeState.read),
+                  changeState.thenGoTo === "HALT" ? "-" : v(changeState.thenGoTo),
+                ].join(":")
+              )
+              .join(", ") +
+            "]"
+          }`;
         })
         .join(", ") +
       "]"
@@ -188,23 +129,33 @@ export class TMRuleSet {
 }
 
 /**
- * A builder to build the turing machine's ruleset.
- * @see {@link TMRuleSet}
+ * A builder to build the Move-First Turing Machine's ruleset.
+ * @see {@link MoveFirstTMRuleSet}
  */
-export class TMRuleSetBuilder {
-  private nowBuildingState: TMState | null = null;
-  private rules: TMRule[] = [];
+export class MoveFirstTMRuleSetBuilder {
+  private nowBuildingInfo: { nowState: TMState; write: TMSymbol; move: TMMove } | null = null;
+  private rules: {
+    nowState: TMState;
+    out: {
+      write: TMSymbol;
+      move: TMMove;
+      changeStates: {
+        read: TMSymbol;
+        thenGoTo: TMState | "HALT";
+      }[];
+    };
+  }[] = [];
 
   /**
    * Sets which states the rules to be added are related to.
    *
-   * @see {@link TMRuleSetBuilder.add}
+   * @see {@link MoveFirstTMRuleSetBuilder.add}
    *
    * @param state The state the rules to be added are related to.
    * @returns This builder, to method chains.
    */
-  public state(state: TMState) {
-    this.nowBuildingState = state;
+  public state(state: TMState, write: TMSymbol, move: TMMove) {
+    this.nowBuildingInfo = { nowState: state, write: write, move: move };
     return this;
   }
 
@@ -212,8 +163,6 @@ export class TMRuleSetBuilder {
    * Add rule to this builder.
    *
    * @remarks
-   * The rule is interpreted as "When read *read* symbol at *state* then change state to *nextState*, write *write* symbol on same location, and move head to *move*".
-   * *state* is set by {@link TMRuleSetBuilder.state}.
    *
    * @param read
    * @param write
@@ -221,23 +170,44 @@ export class TMRuleSetBuilder {
    * @param nextState
    * @returns This builder, to method chains.
    */
-  public add(read: TMSymbol, write: TMSymbol, move: TMMove, nextState?: TMState) {
-    if (this.nowBuildingState == null) {
+  public add(read: TMSymbol, nextState: TMState) {
+    if (this.nowBuildingInfo == null) {
       throw new Error("You must specify to what TMState this rule is bounded, using state().");
     }
 
-    const e = {
-      nowState: this.nowBuildingState,
-      read: read,
-      out: {
-        write: write,
-        move: move,
-        nextState: nextState ?? this.nowBuildingState,
-      },
-    };
+    const lambdaNowBuildingInfo = this.nowBuildingInfo;
+    const willBindRules = this.rules.filter(
+      (a) =>
+        a.nowState === lambdaNowBuildingInfo.nowState &&
+        a.out.move === lambdaNowBuildingInfo.move &&
+        a.out.write === lambdaNowBuildingInfo.write
+    );
 
-    if (this.rules.filter((a) => TMEquality.ruleEquals(a, e)).length === 0) {
-      this.rules.push(e);
+    if (willBindRules.length === 0) {
+      this.rules.push({
+        nowState: this.nowBuildingInfo.nowState,
+        out: {
+          move: this.nowBuildingInfo.move,
+          write: this.nowBuildingInfo.write,
+          changeStates: [
+            {
+              read: read,
+              thenGoTo: nextState,
+            },
+          ],
+        },
+      });
+    } else {
+      if (
+        willBindRules[0].out.changeStates.filter(
+          (changeState) => changeState.read === read && changeState.thenGoTo === nextState
+        ).length === 0
+      ) {
+        willBindRules[0].out.changeStates.push({
+          read: read,
+          thenGoTo: nextState,
+        });
+      }
     }
 
     return this;
@@ -254,20 +224,43 @@ export class TMRuleSetBuilder {
    * @returns This builder, to method chains.
    */
   public addHALT(read: TMSymbol) {
-    if (this.nowBuildingState == null) {
+    if (this.nowBuildingInfo == null) {
       throw new Error("You must specify to what TMState this rule is bounded, using state().");
     }
 
-    const e: TMRule = {
-      nowState: this.nowBuildingState,
-      read: read,
-      out: {
-        move: "HALT",
-      },
-    };
+    const lambdaNowBuildingInfo = this.nowBuildingInfo;
+    const willBindRules = this.rules.filter(
+      (a) =>
+        a.nowState === lambdaNowBuildingInfo.nowState &&
+        a.out.move === lambdaNowBuildingInfo.move &&
+        a.out.write === lambdaNowBuildingInfo.write
+    );
 
-    if (this.rules.filter((a) => TMEquality.ruleEquals(a, e)).length === 0) {
-      this.rules.push(e);
+    if (willBindRules.length === 0) {
+      this.rules.push({
+        nowState: this.nowBuildingInfo.nowState,
+        out: {
+          move: this.nowBuildingInfo.move,
+          write: this.nowBuildingInfo.write,
+          changeStates: [
+            {
+              read: read,
+              thenGoTo: "HALT",
+            },
+          ],
+        },
+      });
+    } else {
+      if (
+        willBindRules[0].out.changeStates.filter(
+          (changeState) => changeState.read === read && changeState.thenGoTo === "HALT"
+        ).length === 0
+      ) {
+        willBindRules[0].out.changeStates.push({
+          read: read,
+          thenGoTo: "HALT",
+        });
+      }
     }
 
     return this;
@@ -278,113 +271,16 @@ export class TMRuleSetBuilder {
    * @returns Created rule-set.
    */
   public build() {
-    return new TMRuleSet(this.rules);
+    return new MoveFirstTMRuleSet(this.rules);
   }
 }
 
 /**
- * The tape of the turing machine.
- *
- * @remarks
- * This class is used by the library.
- * Usually, users don't needs to use this.
+ * A object for simulate the turing machine, but the machine's head will move before read the tape.
  */
-export class TMTape {
-  private readonly data: Map<number, TMSymbol>;
+export class MoveFirstTuringMachine implements ComputationSystem {
   private readonly blank: TMSymbol;
-
-  private minIndex: number;
-  private maxIndex: number;
-
-  private constructor(
-    data: Map<number, TMSymbol>,
-    blank: TMSymbol,
-    minIndex: number,
-    maxIndex: number
-  ) {
-    this.data = data;
-    this.blank = blank;
-    this.minIndex = minIndex;
-    this.maxIndex = maxIndex;
-  }
-
-  public static create(symbols: TMSymbol[], blank: TMSymbol) {
-    const tapeData = new Map<number, TMSymbol>();
-    symbols.forEach((symbol, i) => {
-      tapeData.set(i, symbol);
-    });
-    return new TMTape(tapeData, blank, 0, tapeData.size - 1);
-  }
-
-  public read(n: number): TMSymbol {
-    return this.data.has(n) ? this.data.get(n)!! : this.blank;
-  }
-
-  public write(n: number, symbol: TMSymbol) {
-    this.minIndex = Math.min(n, this.minIndex);
-    this.maxIndex = Math.max(n, this.maxIndex);
-
-    return this.data.set(n, symbol);
-  }
-
-  public clone(): TMTape {
-    return new TMTape(new Map(this.data), this.blank, this.minIndex, this.maxIndex);
-  }
-
-  /**
-   * @returns A copy of this tape that cannot be modified.
-   */
-  public locked(): ILockedTMTape {
-    const clone = this.clone();
-
-    return new (class implements ILockedTMTape {
-      read(n: number): TMSymbol {
-        return clone.read(n);
-      }
-      toString(): string {
-        return clone.toString();
-      }
-      getWrittenRange(): { left: number; right: number } {
-        return { left: clone.minIndex, right: clone.maxIndex };
-      }
-    })();
-  }
-
-  public toString() {
-    let str = "…" + this.blank.value;
-    for (let index = this.minIndex; index <= this.maxIndex; index++) {
-      str += this.data.get(index)?.value ?? this.blank.value;
-    }
-
-    return str + this.blank.value + "…";
-  }
-}
-
-/**
- * Immutable tape informaiton to refer.
- */
-export interface ILockedTMTape {
-  /**
-   * Returns *n*th symbol of the tape.
-   * @param n Index of tape. Can be < 0.
-   * @returns If written something on *n*th location, return it. If not, return blank symbol, specified by the machine.
-   */
-  read(n: number): TMSymbol;
-
-  getWrittenRange(): { left: number; right: number };
-  /**
-   * Returns string representation of this tape.
-   * @returns String representation of this tape.
-   */
-  toString(): string;
-}
-
-/**
- * A object for simulate the turing machine.
- */
-export class TuringMachine implements ComputationSystem {
-  private readonly blank: TMSymbol;
-  private readonly ruleset: TMRuleSet;
+  private readonly ruleset: MoveFirstTMRuleSet;
   private readonly initState: TMState;
   private readonly acceptState: TMState | null;
 
@@ -405,7 +301,7 @@ export class TuringMachine implements ComputationSystem {
    */
   constructor(
     blank: TMSymbol,
-    ruleset: TMRuleSet,
+    ruleset: MoveFirstTMRuleSet,
     initState: TMState,
     acceptState: TMState | null = null
   ) {
@@ -417,7 +313,7 @@ export class TuringMachine implements ComputationSystem {
 
   /**
    * Get the word when this machine starts the process.
-   * @returns Returns the initial-word if {@link TuringMachine.start} was called, If not, return null.
+   * @returns Returns the initial-word if {@link MoveFirstTuringMachine.start} was called, If not, return null.
    */
   public getInitialWord(): TMSymbol[] | null {
     return this.initialWord;
@@ -462,24 +358,15 @@ export class TuringMachine implements ComputationSystem {
       if (this.isAccepted()) return;
       if (this.isHalted()) return;
 
-      const readSymbol = this.tape.read(this.headPosition);
-      const candinateRules = this.ruleset.getCandinates(this.nowState, readSymbol);
+      const candinateRules = this.ruleset.getCandinates(this.nowState!);
 
       if (candinateRules.length > 1) {
-        throw new Error(
-          `Many rules corresponding to {${this.nowState}, ${readSymbol}} are defined.`
-        );
+        throw new Error(`Many rules corresponding to {${this.nowState.value}} are defined.`);
       } else if (candinateRules.length == 0) {
-        throw new Error(
-          `The rule corresponding to {${this.nowState}, ${readSymbol}} is not defined.`
-        );
+        throw new Error(`The rule corresponding to {${this.nowState.value}} is not defined.`);
       }
 
       const action = candinateRules[0];
-      if (action.move === "HALT") {
-        this.halt = true;
-        break;
-      }
 
       this.tape.write(this.headPosition, action.write);
       switch (action.move) {
@@ -491,7 +378,28 @@ export class TuringMachine implements ComputationSystem {
           break;
       }
 
-      this.nowState = action.nextState;
+      const read = this.tape.read(this.headPosition);
+      const candinateStates = action.changeStates.filter(
+        (changeState) => changeState.read === read
+      );
+
+      if (candinateStates.length > 1) {
+        throw new Error(
+          `Many rules corresponding to {${this.nowState.value}, ${read.value}} are defined.`
+        );
+      } else if (candinateStates.length == 0) {
+        throw new Error(
+          `The rule corresponding to {${this.nowState.value}, ${read.value}} is not defined.`
+        );
+      }
+
+      const changeTo = candinateStates[0].thenGoTo;
+
+      if (changeTo === "HALT") {
+        this.halt = true;
+      } else {
+        this.nowState = changeTo;
+      }
     }
   }
 
@@ -577,8 +485,8 @@ export class TuringMachine implements ComputationSystem {
     }
   }
 
-  public clone(): TuringMachine {
-    return new TuringMachine(this.blank, this.ruleset, this.initState, this.acceptState);
+  public clone(): MoveFirstTuringMachine {
+    return new MoveFirstTuringMachine(this.blank, this.ruleset, this.initState, this.acceptState);
   }
 
   /**

@@ -1,4 +1,3 @@
-import { table } from "console";
 import { TagSystem, TagSystemConfiguration, TagSystemLetter, TagSystemWord } from "./tag-system";
 import {
   TMConfiguration,
@@ -9,6 +8,7 @@ import {
   TMSymbolFrom,
   TuringMachine,
 } from "./turing-machine";
+import { ComputationSystem } from "./computation-system";
 
 export type TransformLogTableElm = { value: string } | { toString(): string };
 export type TransformLogTable = (TransformLogTableElm | TransformLogTableElm[])[][];
@@ -344,7 +344,6 @@ Science, 168(2):215–240, 1996.
   }
 }
 
-export type ComputationSystem = TuringMachine | TagSystem;
 export type SystemInput<T extends ComputationSystem> = Parameters<T["start"]>[0];
 export type SystemConfigration<T extends ComputationSystem> = Exclude<
   ReturnType<T["getConfiguration"]>,
