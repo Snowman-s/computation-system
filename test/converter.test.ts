@@ -8,6 +8,11 @@ import {
   Converter,
   ITransformHierarchy,
   TransformLogTableElm,
+  TMSymbol,
+  TMSymbolFrom,
+  TMStateFrom,
+  TMState,
+  TMRuleSet,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -99,10 +104,71 @@ describe("ConverterTest", () => {
     expect(transformHierarchy.getConfiguration(0)).toBeNull();
     expect(transformHierarchy.asIndependantSystem(0)).toBeNull();
     expect(transformHierarchy.getTransFormLogTable(0)).toBeNull();
+
     transformHierarchy.start(validTagSystem, [[A, B, B]]);
     expect(transformHierarchy.getTuple(0)).toEqual(validTagSystem.asTuple());
     expect(transformHierarchy.asIndependantSystem(0)).not.toBeNull();
 
     expect(() => transformHierarchy.getTransFormLogTable(1)).toThrowError();
+  });
+  it("TuringMachine2SymbolToMoveFirstTuringMachine", () => {
+    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+    let ruleset = TMRuleSet.builder()
+      .state(q1)
+      .add(A, B, "R")
+      .add(B, A, "R", q2)
+      .state(q2)
+      .add(B, B, "R", qf)
+      .state(qf)
+      .build();
+
+    let tm = new TuringMachine(A, ruleset, q1, qf);
+
+    const hierarchy = Converter.turingMachine2SymbolToMoveFirstTuringMachineNew(A);
+    hierarchy.start(tm, [[A, A, B, B], 0]);
+
+    expect(hierarchy.getConfiguration(1)?.tape.toString()).toBe("…AAABBA…");
+    expect(hierarchy.getTuple(1)?.ruleset.toString()).toBe(
+      "[q1-A BR[A:q1-A, B:q1-B], q1-B AR[A:q2-A, B:q2-B], q2-B BR[A:qf, B:qf]]"
+    );
+    while (!hierarchy.stopped()) {
+      hierarchy.proceed(1);
+    }
+
+    expect(hierarchy.getConfiguration(0)?.tape.toString()).toBe("…ABBABA…");
+    expect(hierarchy.getConfiguration(1)?.tape.toString()).toBe("…ABBABA…");
+  });
+  it("MonkeyTuringMachine2SymbolToMoveFirstTuringMachine", () => {
+    let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+    let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+    let invalidRuleset = TMRuleSet.builder()
+      .state(q1)
+      .add(A, B, "R")
+      .add(B, A, "R", q2)
+      .state(q2)
+      .add(B, C, "R", qf)
+      .state(qf)
+      .build();
+    let invalidTM = new TuringMachine(A, invalidRuleset, q1, qf);
+
+    let validRuleset = TMRuleSet.builder()
+      .state(q1)
+      .add(A, B, "R")
+      .add(B, A, "R", q2)
+      .state(q2)
+      .add(B, B, "R", qf)
+      .state(qf)
+      .build();
+    let validTM = new TuringMachine(A, validRuleset, q1, qf);
+
+    const hierarchy = Converter.turingMachine2SymbolToMoveFirstTuringMachineNew(A);
+    expect(() => hierarchy.start(invalidTM, [[A, A, B, B], 0])).toThrowError();
+
+    expect(hierarchy.getConfiguration(1)).toBeNull();
+    expect(hierarchy.getTuple(1)).toBeNull();
+    hierarchy.start(validTM, [[A, A, B, B], 0]);
+    expect(hierarchy.getConfiguration(1)).not.toBeNull();
+    expect(hierarchy.getTuple(1)).not.toBeNull();
   });
 });

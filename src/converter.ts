@@ -8,7 +8,11 @@ import {
   TMSymbolFrom,
   TuringMachine,
 } from "./turing-machine";
-import { ComputationSystem } from "./computation-system";
+import {
+  ComputationSystem,
+  MoveFirstTMRuleSet,
+  MoveFirstTuringMachine,
+} from "./computation-system";
 
 export type TransformLogTableElm = { value: string } | { toString(): string };
 export type TransformLogTable = (TransformLogTableElm | TransformLogTableElm[])[][];
@@ -25,7 +29,7 @@ Science, 168(2):215–240, 1996.
   >(hierarchy: ITransformHierarchy<S>): ITransformHierarchy<[...S, TuringMachine]> {
     let result = this._tag2SystemToTuringMachine218();
 
-    return hierarchy.appendLastAndNewHierarchy<TuringMachine>(result[0], result[1]);
+    return hierarchy.appendLastAndNewHierarchy<TuringMachine>(result);
   }
   /**
  * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
@@ -34,13 +38,10 @@ Science, 168(2):215–240, 1996.
   public static tag2SystemToTuringMachine218New(): ITransformHierarchy<[TagSystem, TuringMachine]> {
     let result = this._tag2SystemToTuringMachine218();
 
-    return new TransformHierarchy<[TagSystem, TuringMachine]>([result[0]], result[1]);
+    return new TransformHierarchy<[TagSystem, TuringMachine]>([result]);
   }
 
-  private static _tag2SystemToTuringMachine218(): [
-    ITransformElement<TagSystem, TuringMachine>,
-    TuringMachine
-  ] {
+  private static _tag2SystemToTuringMachine218(): ITransformElement<TagSystem, TuringMachine> {
     //Create TMSymbols
     const [A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R] = TMSymbolFrom(
       "A",
@@ -340,7 +341,126 @@ Science, 168(2):215–240, 1996.
       }
     })();
 
-    return [transformElement, tm];
+    return transformElement;
+  }
+
+  public static turingMachine2SymbolToMoveFirstTuringMachine<
+    S extends [...ComputationSystem[], TuringMachine]
+  >(
+    hierarchy: ITransformHierarchy<S>,
+    firstSymbol: TMSymbol
+  ): ITransformHierarchy<[...S, MoveFirstTuringMachine]> {
+    let result = this._turingMachine2SymbolToMoveFirstTuringMachine(firstSymbol);
+
+    return hierarchy.appendLastAndNewHierarchy<MoveFirstTuringMachine>(result);
+  }
+
+  public static turingMachine2SymbolToMoveFirstTuringMachineNew(
+    firstSymbol: TMSymbol
+  ): ITransformHierarchy<[TuringMachine, MoveFirstTuringMachine]> {
+    let result = this._turingMachine2SymbolToMoveFirstTuringMachine(firstSymbol);
+
+    return new TransformHierarchy<[TuringMachine, MoveFirstTuringMachine]>([result]);
+  }
+
+  private static _turingMachine2SymbolToMoveFirstTuringMachine(
+    firstSymbol: TMSymbol
+  ): ITransformElement<TuringMachine, MoveFirstTuringMachine> {
+    const transformElement = new (class
+      implements ITransformElement<TuringMachine, MoveFirstTuringMachine>
+    {
+      asTuple(): {
+        stateSet: Set<TMState>;
+        symbolSet: Set<TMSymbol>;
+        blankSymbol: TMSymbol;
+        inputSymbolSet: Set<TMSymbol>;
+        ruleset: MoveFirstTMRuleSet;
+        initState: TMState;
+        acceptState: TMState | null;
+      } | null {
+        return this.tmSample === null ? null : this.tmSample.asTuple();
+      }
+      asIndependantSystem(): MoveFirstTuringMachine | null {
+        return this.tmSample === null ? null : this.tmSample.clone();
+      }
+      getTransFormLogTable(): TransformLogTable {
+        throw new Error("Method not implemented.");
+      }
+      tmSample: MoveFirstTuringMachine | null = null;
+
+      interpretConfigration(real: TMConfiguration | null): TMConfiguration | null {
+        return real;
+      }
+      interpretInput(
+        virtual: [word: TMSymbol[], headPosition: number]
+      ): [word: TMSymbol[], headPosition: number] {
+        return virtual;
+      }
+      bind(system: {
+        stateSet: Set<TMState>;
+        symbolSet: Set<TMSymbol>;
+        blankSymbol: TMSymbol;
+        inputSymbolSet: Set<TMSymbol>;
+        ruleset: TMRuleSet;
+        initState: TMState;
+        acceptState: TMState | null;
+      }): void {
+        const symbols = [...system.symbolSet];
+        if (2 < symbols.length) {
+          throw new Error();
+        }
+        const states = [...system.stateSet];
+
+        const newStatePool: [state: TMState, symbol: TMSymbol, created: TMState][] = [];
+        let acceptStateCopy: TMState | null = null;
+        const concatStrAndNew = function (state: TMState, symbol: TMSymbol) {
+          const duplicated =
+            state === system.acceptState
+              ? newStatePool.filter((elm) => elm[0] === state)
+              : newStatePool.filter((elm) => elm[0] === state && elm[1] === symbol);
+
+          if (duplicated.length === 0) {
+            const [ret] = TMStateFrom(
+              state === system.acceptState ? state.value : state.value + "-" + symbol.value
+            );
+            if (state === system.acceptState) {
+              acceptStateCopy = ret;
+            }
+            newStatePool.push([state, symbol, ret]);
+            return ret;
+          } else {
+            return duplicated[0][2];
+          }
+        };
+
+        const ruleSetBuilder = MoveFirstTMRuleSet.builder();
+        states.forEach((state) => {
+          symbols.forEach((symbol) => {
+            const candinates = system.ruleset.getCandinates(state, symbol);
+            if (candinates.length === 0) return;
+            candinates.forEach((candinate) => {
+              if (candinate.move !== "HALT") {
+                ruleSetBuilder
+                  .state(concatStrAndNew(state, symbol), candinate.write, candinate.move)
+                  .add(symbols[0], concatStrAndNew(candinate.nextState, symbols[0]))
+                  .add(symbols[1], concatStrAndNew(candinate.nextState, symbols[1]));
+              }
+            });
+          });
+        });
+
+        const firstState = concatStrAndNew(system.initState, firstSymbol);
+
+        this.tmSample = new MoveFirstTuringMachine(
+          system.blankSymbol,
+          ruleSetBuilder.build(),
+          firstState,
+          acceptStateCopy
+        );
+      }
+    })();
+
+    return transformElement;
   }
 }
 
@@ -355,8 +475,8 @@ export interface ITransformElement<Take extends ComputationSystem, As extends Co
   interpretConfigration(real: SystemConfigration<As> | null): SystemConfigration<Take> | null;
   interpretInput(virtual: SystemInput<Take>): SystemInput<As>;
   bind(system: SystemTuple<Take>): void;
-  asTuple(): SystemTuple<As>;
-  asIndependantSystem(): As;
+  asTuple(): SystemTuple<As> | null;
+  asIndependantSystem(): As | null;
   getTransFormLogTable(): TransformLogTable;
 }
 
@@ -384,19 +504,17 @@ export interface ITransformHierarchy<S extends ComputationSystem[]> {
   asIndependantSystem<N extends number>(system: N): S[N] | null;
   getTransFormLogTable(smallerSystem: number): TransformLogTable | null;
   appendLastAndNewHierarchy<Add extends ComputationSystem>(
-    append: ITransformElement<LastOf<S>, Add>,
-    newBase: Add
+    append: ITransformElement<LastOf<S>, Add>
   ): ITransformHierarchy<[...S, Add]>;
 }
 
 class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHierarchy<S> {
   private elements: SystemsAsHierarchyElements<S>;
-  private baseSystem: LastOf<S>;
+  private baseSystem: LastOf<S> | null = null;
   private inputSystemSample: FirstOf<S> | null = null;
 
-  public constructor(elements: SystemsAsHierarchyElements<S>, baseSystem: LastOf<S>) {
+  public constructor(elements: SystemsAsHierarchyElements<S>) {
     this.elements = elements;
-    this.baseSystem = baseSystem.clone() as LastOf<S>;
   }
 
   getTransFormLogTable(smallerSystem: number): TransformLogTable | null {
@@ -406,7 +524,7 @@ class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHie
   }
 
   stopped(): boolean {
-    return this.baseSystem.isStopped();
+    return this.baseSystem !== null && this.baseSystem.isStopped();
   }
 
   start(inputSystem: FirstOf<S>, input: Parameters<FirstOf<S>["start"]>[0]): void {
@@ -421,18 +539,24 @@ class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHie
     this.elements.forEach((elm) => {
       inputCopy = elm.interpretInput(inputCopy);
     });
+    this.baseSystem = this.elements[this.elements.length - 1].asIndependantSystem() as LastOf<S>;
     this.baseSystem.start(inputCopy as any);
 
     this.inputSystemSample = inputSystem.clone() as FirstOf<S>;
   }
 
   proceed(step: number): void {
+    if (this.baseSystem === null) {
+      throw new Error("You must call start() before proceed().");
+    }
     this.baseSystem.proceed(step);
   }
 
   getConfiguration<N extends number>(
     system: N
   ): Exclude<ReturnType<S[N]["getConfiguration"]>, null> | null {
+    if (this.baseSystem === null) return null;
+
     let ret = this.baseSystem.getConfiguration();
     if (system <= this.elements.length - 1) {
       ret = this.elements[this.elements.length - 1].interpretConfigration(ret);
@@ -477,14 +601,12 @@ class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHie
   }
 
   appendLastAndNewHierarchy<Add extends ComputationSystem>(
-    append: ITransformElement<LastOf<S>, Add>,
-    newBase: Add
+    append: ITransformElement<LastOf<S>, Add>
   ): ITransformHierarchy<[...S, Add]> {
     const copyelements = [...this.elements];
     copyelements.push(append);
     return new TransformHierarchy<[...S, Add]>(
-      copyelements as SystemsAsHierarchyElements<[...S, Add]>,
-      newBase as LastOf<[...S, Add]>
+      copyelements as SystemsAsHierarchyElements<[...S, Add]>
     );
   }
 }
