@@ -13,6 +13,8 @@ import {
   TMStateFrom,
   TMState,
   TMRuleSet,
+  MoveFirstTMRuleSet,
+  MoveFirstTuringMachine,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -170,5 +172,36 @@ describe("ConverterTest", () => {
     hierarchy.start(validTM, [[A, A, B, B], 0]);
     expect(hierarchy.getConfiguration(1)).not.toBeNull();
     expect(hierarchy.getTuple(1)).not.toBeNull();
+  });
+  it("MoveFirstTM2SymbolToTagSystem", () => {
+    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+    let ruleset = MoveFirstTMRuleSet.builder()
+      .state(q1, A, "R")
+      .add(A, q1)
+      .add(B, q2)
+      .state(q2, A, "L")
+      .add(A, q3)
+      .add(B, q3)
+      .state(q3, B, "R")
+      .add(A, q3)
+      .add(B, qf)
+      .build();
+
+    let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
+
+    let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+    hierarchy.start(tm, [[A, B, B], 0]);
+
+    while (!hierarchy.stopped()) {
+      hierarchy.proceed(1);
+    }
+
+    const tmtape = hierarchy.getConfiguration(0)?.tape;
+    expect(tmtape?.toString()).toEqual("…ABBBA…");
+    const word = hierarchy.getConfiguration(1)?.word;
+    expect(word?.toString()).toEqual("A_3xα_3xα_3xα_3xB_3x");
   });
 });

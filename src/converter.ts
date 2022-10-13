@@ -1,4 +1,11 @@
-import { TagSystem, TagSystemConfiguration, TagSystemLetter, TagSystemWord } from "./tag-system";
+import {
+  TagSystem,
+  TagSystemConfiguration,
+  TagSystemLetter,
+  TagSystemLetterFrom,
+  TagSystemRuleSet,
+  TagSystemWord,
+} from "./tag-system";
 import {
   TMConfiguration,
   TMRuleSet,
@@ -6,6 +13,7 @@ import {
   TMStateFrom,
   TMSymbol,
   TMSymbolFrom,
+  TMTape,
   TuringMachine,
 } from "./turing-machine";
 import {
@@ -461,6 +469,381 @@ Science, 168(2):215–240, 1996.
     })();
 
     return transformElement;
+  }
+
+  public static moveFirstTM2SymbolToTagSystem<
+    S extends [...ComputationSystem[], MoveFirstTuringMachine]
+  >(hierarchy: ITransformHierarchy<S>): ITransformHierarchy<[...S, TagSystem]> {
+    let result = this._moveFirstTM2SymbolToTagSystem();
+
+    return hierarchy.appendLastAndNewHierarchy<TagSystem>(result);
+  }
+
+  public static moveFirstTM2SymbolToTagSystemNew(): ITransformHierarchy<
+    [MoveFirstTuringMachine, TagSystem]
+  > {
+    let result = this._moveFirstTM2SymbolToTagSystem();
+
+    return new TransformHierarchy<[MoveFirstTuringMachine, TagSystem]>([result]);
+  }
+
+  /**
+   * @see COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.
+   */
+  private static _moveFirstTM2SymbolToTagSystem(): ITransformElement<
+    MoveFirstTuringMachine,
+    TagSystem
+  > {
+    return new (class implements ITransformElement<MoveFirstTuringMachine, TagSystem> {
+      tagSystemSample: TagSystem | null = null;
+      transformLog:
+        | {
+            letterX: TagSystemLetter;
+            symbol0: TMSymbol;
+            symbol1: TMSymbol;
+            initState: TMState;
+            symbolCorrespondenceTable: {
+              state: TMState;
+              A: TagSystemLetter;
+              B: TagSystemLetter;
+              alpha: TagSystemLetter;
+              beta: TagSystemLetter;
+            }[];
+          }
+        | undefined = undefined;
+
+      interpretConfigration(real: TagSystemConfiguration | null): TMConfiguration | null {
+        if (real === null) return null;
+        if (this.transformLog === undefined) return null;
+
+        const { word } = real;
+        const wordLetters = word.asLetters();
+
+        if (wordLetters.length < 2) return null;
+
+        const useLetterSets = this.transformLog.symbolCorrespondenceTable.filter(
+          (elm) => elm.A === wordLetters[0]
+        );
+
+        if (useLetterSets.length !== 1) {
+          return null;
+        }
+
+        const useLetterSet = useLetterSets[0];
+        if (wordLetters[1] !== this.transformLog.letterX) {
+          return null;
+        }
+
+        let i = 2;
+        let leftNum = 0;
+        let rightNum = 0;
+        if (wordLetters.length <= i) return null;
+        while (wordLetters[i] !== useLetterSet.B) {
+          if (wordLetters.length <= i) return null;
+          const theLetter = wordLetters[i];
+          if (theLetter !== useLetterSet.alpha) return null;
+          i++;
+          if (wordLetters.length <= i) return null;
+          const theLetter2 = wordLetters[i];
+          if (theLetter2 !== this.transformLog.letterX) return null;
+          leftNum++;
+          i++;
+        }
+        if (wordLetters.length <= i + 1) return null;
+        if (wordLetters[i + 1] !== this.transformLog.letterX) return null;
+        i += 2;
+        while (i < wordLetters.length) {
+          if (wordLetters.length <= i) return null;
+          const theLetter = wordLetters[i];
+          if (theLetter !== useLetterSet.beta) return null;
+          i++;
+          if (wordLetters.length <= i) return null;
+          const theLetter2 = wordLetters[i];
+          if (theLetter2 !== this.transformLog.letterX) return null;
+          rightNum++;
+          i++;
+        }
+
+        const { symbol0, symbol1 } = this.transformLog;
+        const leftToSymbols = [...leftNum.toString(2)].map((t) => (t === "0" ? symbol0 : symbol1));
+        const rightToSymbols = [...rightNum.toString(2)]
+          .reverse()
+          .map((t) => (t === "0" ? symbol0 : symbol1));
+
+        const tape = TMTape.create(
+          leftToSymbols.concat(rightToSymbols),
+          this.transformLog.symbol0
+        ).locked();
+
+        return {
+          tape: tape,
+          nowState: useLetterSet.state,
+          headPosition: leftToSymbols.length,
+        };
+      }
+
+      interpretInput(
+        virtual: [word: TMSymbol[], headPosition: number]
+      ): [letters: TagSystemLetter[]] {
+        if (this.transformLog === undefined) throw new Error();
+
+        const [word, headPosition] = virtual;
+        const { letterX, symbol0, initState, symbolCorrespondenceTable } = {
+          ...this.transformLog,
+        };
+
+        const left = word.slice(0, headPosition);
+        const right = word.slice(headPosition + 1);
+
+        const leftNum = left
+          .map((elm, index) => {
+            return elm === symbol0 ? 0 : Math.pow(2, left.length - index);
+          })
+          .reduce((a, b) => a + b, 0);
+        const rightNum = right
+          .map((elm, index) => {
+            return elm === symbol0 ? 0 : Math.pow(2, index);
+          })
+          .reduce((a, b) => a + b, 0);
+
+        const usingLetters = symbolCorrespondenceTable.find((value) => value.state === initState);
+        if (usingLetters === undefined) throw new Error();
+
+        const ret = [usingLetters.A, letterX]
+          .concat(new Array(leftNum).fill([usingLetters.alpha, letterX]).flat())
+          .concat([usingLetters.B, letterX])
+          .concat(new Array(rightNum).fill([usingLetters.beta, letterX]).flat());
+
+        return [ret];
+      }
+
+      bind(system: {
+        stateSet: Set<TMState>;
+        symbolSet: Set<TMSymbol>;
+        blankSymbol: TMSymbol;
+        inputSymbolSet: Set<TMSymbol>;
+        ruleset: MoveFirstTMRuleSet;
+        initState: TMState;
+        acceptState: TMState | null;
+      }): void {
+        const { stateSet, symbolSet, blankSymbol, ruleset, initState, acceptState } = system;
+
+        const [symbol0, symbol1]: TMSymbol[] = (function () {
+          switch (symbolSet.size) {
+            case 0:
+              return TMSymbolFrom("0", "1");
+            case 1:
+              if ([...symbolSet.values()][0] === blankSymbol) {
+                return [symbolSet.entries().next().value, TMSymbolFrom("*")[0]];
+              } else {
+                return [TMSymbolFrom("*")[0], symbolSet.entries().next().value];
+              }
+            case 2:
+              const array = [...symbolSet];
+              if (array[0] === blankSymbol) {
+                return array;
+              } else {
+                return [array[1], array[0]];
+              }
+            default:
+              throw new Error();
+          }
+        })();
+
+        const states = [...stateSet];
+
+        const [X] = TagSystemLetterFrom("x");
+        const ruleSetBuilder = TagSystemRuleSet.builder().add(X, [X]);
+
+        const symbolCorrespondenceTable: {
+          state: TMState;
+          A: TagSystemLetter;
+          B: TagSystemLetter;
+          alpha: TagSystemLetter;
+          beta: TagSystemLetter;
+        }[] = [];
+
+        const lettersPool: TagSystemLetter[] = [];
+
+        states.forEach((state, index) => {
+          const tmoutCndinates = ruleset.getCandinates(state);
+          if (state !== acceptState && tmoutCndinates.length == 0) return;
+          if (tmoutCndinates.length > 1) {
+            throw new Error();
+          }
+          const tmout = tmoutCndinates[0];
+
+          const toLetter = function (char: string, appendSymbol?: 0 | 1, d?: "'") {
+            const appendStr = (function () {
+              if (appendSymbol === undefined) return index.toString(10);
+
+              if (
+                (d !== "'" && ["A", "α", "B", "β"].findIndex((c) => c === char) !== -1) ||
+                (d === "'" && ["B", "β"].findIndex((c) => c === char) !== -1)
+              ) {
+                const symbolI0s = tmout.changeStates.filter(
+                  (changeState) => changeState.read === symbol0
+                );
+                const symbolI1s = tmout.changeStates.filter(
+                  (changeState) => changeState.read === symbol1
+                );
+
+                if (symbolI0s.length !== 1) {
+                  throw new Error();
+                }
+                if (symbolI1s.length !== 1) {
+                  throw new Error();
+                }
+
+                const stateI0 = symbolI0s[0].thenGoTo;
+                const stateI1 = symbolI1s[0].thenGoTo;
+
+                if (stateI0 === "HALT" || stateI1 === "HALT") {
+                  throw new Error();
+                }
+
+                return appendSymbol === 0
+                  ? states.findIndex((t) => t === stateI0).toString(10)
+                  : states.findIndex((t) => t === stateI1).toString(10);
+              } else {
+                return index.toString(10) + (appendSymbol === 0 ? symbol0.value : symbol1.value);
+              }
+            })();
+
+            const str = (function () {
+              let ret = char;
+
+              switch (appendStr.length) {
+                case 0:
+                  break;
+                case 1:
+                  ret += "_" + appendStr;
+                  break;
+                default:
+                  ret += "_{" + appendStr + "}";
+                  break;
+              }
+
+              return d ? "{" + ret + "}" + d : ret;
+            })();
+
+            const mayTheLetter = lettersPool.find((letter) => letter.value === str);
+            if (mayTheLetter !== undefined) {
+              return mayTheLetter;
+            }
+
+            const [newLetter] = TagSystemLetterFrom(str);
+            lettersPool.push(newLetter);
+            return newLetter;
+          };
+
+          symbolCorrespondenceTable.push({
+            state: state,
+            A: toLetter("A"),
+            B: toLetter("B"),
+            alpha: toLetter("α"),
+            beta: toLetter("β"),
+          });
+
+          if (acceptState === state) {
+            ruleSetBuilder.addStop(toLetter("A"));
+            ruleSetBuilder.add(toLetter("α"), [X]);
+            ruleSetBuilder.add(toLetter("B"), [X]);
+            ruleSetBuilder.add(toLetter("β"), [X]);
+            ruleSetBuilder.add(toLetter("B", undefined, "'"), [X]);
+            ruleSetBuilder.add(toLetter("β", undefined, "'"), [X]);
+            return;
+          }
+
+          ruleSetBuilder
+            .add(toLetter("C"), [toLetter("D", 1), toLetter("D", 0)])
+            .add(toLetter("c"), [toLetter("d", 1), toLetter("d", 0)])
+            .add(toLetter("S"), [toLetter("T", 1), toLetter("T", 0)])
+            .add(toLetter("s"), [toLetter("t", 1), toLetter("t", 0)])
+            .add(toLetter("D", 0), [X, toLetter("A", 0), X])
+            .add(toLetter("d", 0), [toLetter("α", 0), X])
+            .add(toLetter("T", 0), [toLetter("B", 0), X])
+            .add(toLetter("t", 0), [toLetter("β", 0), X])
+            .add(toLetter("D", 1), [toLetter("A", 1), X])
+            .add(toLetter("d", 1), [toLetter("α", 1), X])
+            .add(toLetter("T", 1), [toLetter("B", 1), X])
+            .add(toLetter("t", 1), [toLetter("β", 1), X])
+
+            .add(toLetter("C", undefined, "'"), [toLetter("D", 1, "'"), toLetter("D", 0, "'")])
+            .add(toLetter("c", undefined, "'"), [toLetter("d", 1, "'"), toLetter("d", 0, "'")])
+            .add(toLetter("S", undefined, "'"), [toLetter("T", 1, "'"), toLetter("T", 0, "'")])
+            .add(toLetter("s", undefined, "'"), [toLetter("t", 1, "'"), toLetter("t", 0, "'")])
+            .add(toLetter("D", 0, "'"), [X, toLetter("B", 0, "'"), X])
+            .add(toLetter("d", 0, "'"), [toLetter("β", 0, "'"), X])
+            .add(toLetter("T", 0, "'"), [toLetter("A", 0), X])
+            .add(toLetter("t", 0, "'"), [toLetter("α", 0), X])
+            .add(toLetter("D", 1, "'"), [toLetter("B", 1, "'"), X])
+            .add(toLetter("d", 1, "'"), [toLetter("β", 1, "'"), X])
+            .add(toLetter("T", 1, "'"), [toLetter("A", 1), X])
+            .add(toLetter("t", 1, "'"), [toLetter("α", 1), X])
+            .add(toLetter("B", undefined, "'"), [toLetter("B", undefined), X])
+            .add(toLetter("β", undefined, "'"), [toLetter("β", undefined), X]);
+
+          if (tmout.move === "R") {
+            if (tmout.write === symbol0) {
+              ruleSetBuilder.add(toLetter("A"), [toLetter("C"), X]);
+            } else {
+              ruleSetBuilder.add(toLetter("A"), [toLetter("C"), X, toLetter("c"), X]);
+            }
+            ruleSetBuilder
+              .add(toLetter("α"), [toLetter("c"), X, toLetter("c"), X])
+              .add(toLetter("B"), [toLetter("S")])
+              .add(toLetter("β"), [toLetter("s")]);
+          } else {
+            ruleSetBuilder
+              .add(toLetter("A"), [toLetter("A", undefined, "'"), X])
+              .add(toLetter("α"), [toLetter("α", undefined, "'"), X])
+              .add(toLetter("A", undefined, "'"), [toLetter("S", undefined, "'")])
+              .add(toLetter("α", undefined, "'"), [toLetter("s", undefined, "'")])
+              .add(toLetter("β"), [
+                toLetter("c", undefined, "'"),
+                X,
+                toLetter("c", undefined, "'"),
+                X,
+              ]);
+            if (tmout.write === symbol0) {
+              ruleSetBuilder.add(toLetter("B"), [toLetter("C", undefined, "'"), X]);
+            } else {
+              ruleSetBuilder.add(toLetter("B"), [
+                toLetter("C", undefined, "'"),
+                X,
+                toLetter("C", undefined, "'"),
+                X,
+              ]);
+            }
+          }
+        });
+
+        const tagSystemRuleSet = ruleSetBuilder.build();
+
+        this.tagSystemSample = new TagSystem(2, tagSystemRuleSet);
+        this.transformLog = {
+          letterX: X,
+          symbol0: symbol0,
+          symbol1: symbol1,
+          initState: initState,
+          symbolCorrespondenceTable: symbolCorrespondenceTable,
+        };
+      }
+      asTuple(): {
+        deleteNum: number;
+        letterSet: Set<TagSystemLetter>;
+        ruleSet: TagSystemRuleSet;
+      } | null {
+        return this.tagSystemSample === null ? null : this.tagSystemSample.asTuple();
+      }
+      asIndependantSystem(): TagSystem | null {
+        return this.tagSystemSample === null ? null : this.tagSystemSample.clone();
+      }
+      getTransFormLogTable(): TransformLogTable {
+        throw new Error("Method not implemented.");
+      }
+    })();
   }
 }
 

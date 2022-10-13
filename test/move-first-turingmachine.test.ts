@@ -334,6 +334,6 @@ describe("MoveFirstTuringMachine", function () {
       .build();
 
     let tm = new MoveFirstTuringMachine(Blank, ruleset, q1, qf);
-    expect(tm.clone().asTuple()).toEqual(tm.clone().asTuple());
+    expect(tm.clone().asTuple()).toEqual(tm.asTuple());
   });
 });
