@@ -8,6 +8,7 @@ import {
 } from "./tag-system";
 import {
   TMConfiguration,
+  TMRuleOutput,
   TMRuleSet,
   TMState,
   TMStateFrom,
@@ -18,14 +19,18 @@ import {
 } from "./turing-machine";
 import {
   ComputationSystem,
+  MoveFirstTMRule,
   MoveFirstTMRuleSet,
   MoveFirstTuringMachine,
 } from "./computation-system";
-
-export type TransformLogTableElm = { value: string } | { toString(): string };
-export type TransformLogTable = (TransformLogTableElm | TransformLogTableElm[])[][];
+import {
+  MoveFirstTM2SymbolToTagSystemTransformLog,
+  Tag2SystemToTuringMachine218TransformLog,
+  TuringMachine2SymbolToMoveFirstTuringMachineTransformLog,
+} from "./transform-log-types";
 
 export class Converter {
+  /* istanbul ignore next */
   private constructor() {}
 
   /**
@@ -33,23 +38,42 @@ export class Converter {
 Science, 168(2):215–240, 1996.
    */
   public static tag2SystemToTuringMachine218<
-    S extends [...ComputationSystem[], TagSystem] = [TagSystem]
-  >(hierarchy: ITransformHierarchy<S>): ITransformHierarchy<[...S, TuringMachine]> {
+    S extends [...ComputationSystem[], TagSystem] = [TagSystem],
+    TransformLog extends unknown[] = []
+  >(
+    hierarchy: ITransformHierarchy<S, TransformLog>
+  ): ITransformHierarchy<
+    [...S, TuringMachine],
+    [...TransformLog, Tag2SystemToTuringMachine218TransformLog]
+  > {
     let result = this._tag2SystemToTuringMachine218();
 
-    return hierarchy.appendLastAndNewHierarchy<TuringMachine>(result);
+    return hierarchy.appendLastAndNewHierarchy<
+      TuringMachine,
+      Tag2SystemToTuringMachine218TransformLog
+    >(result);
   }
   /**
  * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
 Science, 168(2):215–240, 1996.
  */
-  public static tag2SystemToTuringMachine218New(): ITransformHierarchy<[TagSystem, TuringMachine]> {
+  public static tag2SystemToTuringMachine218New(): ITransformHierarchy<
+    [TagSystem, TuringMachine],
+    [Tag2SystemToTuringMachine218TransformLog]
+  > {
     let result = this._tag2SystemToTuringMachine218();
 
-    return new TransformHierarchy<[TagSystem, TuringMachine]>([result]);
+    return new TransformHierarchy<
+      [TagSystem, TuringMachine],
+      [Tag2SystemToTuringMachine218TransformLog]
+    >([result]);
   }
 
-  private static _tag2SystemToTuringMachine218(): ITransformElement<TagSystem, TuringMachine> {
+  private static _tag2SystemToTuringMachine218(): ITransformElement<
+    TagSystem,
+    TuringMachine,
+    Tag2SystemToTuringMachine218TransformLog
+  > {
     //Create TMSymbols
     const [A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R] = TMSymbolFrom(
       "A",
@@ -122,7 +146,10 @@ Science, 168(2):215–240, 1996.
 
     const tuple = { ...tm.asTuple() };
 
-    const transformElement = new (class implements ITransformElement<TagSystem, TuringMachine> {
+    const transformElement = new (class
+      implements
+        ITransformElement<TagSystem, TuringMachine, Tag2SystemToTuringMachine218TransformLog>
+    {
       asTuple(): {
         stateSet: Set<TMState>;
         symbolSet: Set<TMSymbol>;
@@ -142,27 +169,22 @@ Science, 168(2):215–240, 1996.
           tuple.acceptState
         );
       }
-      private transformTable: [
-        letter: TagSystemLetter,
-        output: TagSystemWord | "STOP",
-        N: number,
-        charRepresent: TMSymbol[],
-        outRepresent: TMSymbol[]
-      ][] = [];
+      private transformTable: Tag2SystemToTuringMachine218TransformLog | null = [];
 
       private startHead = -1;
 
       interpretConfigration(real: TMConfiguration | null): TagSystemConfiguration | null {
-        if (real === null) return null;
+        if (real === null || this.transformTable === null) return null;
 
         const tape = real.tape;
         const range = tape.getWrittenRange();
 
         let letters: TagSystemLetter[] = [];
         let stopped = false;
+
         if (tape.read(range.left + 1) === R) {
           //Last letter must be STOP.
-          letters.push(this.transformTable[this.transformTable.length - 1][0]);
+          letters.push(this.transformTable[this.transformTable.length - 1].letter);
           stopped = true;
         }
 
@@ -183,7 +205,7 @@ Science, 168(2):215–240, 1996.
         for (let oneCount = 0; i <= range.right; i++) {
           const read = tape.read(i);
           if (read === M) {
-            const letterCandinate = this.transformTable.find((elm) => elm[2] === oneCount)?.[0];
+            const letterCandinate = this.transformTable.find((elm) => elm.N === oneCount)?.letter;
             if (letterCandinate === undefined) {
               return null;
             }
@@ -212,24 +234,30 @@ Science, 168(2):215–240, 1996.
       interpretInput(
         input: [letters: TagSystemLetter[]]
       ): [word: TMSymbol[], headPosition: number] {
+        if (this.transformTable === null) {
+          throw new Error("interpretInput() was called before bind() was called.");
+        }
+
+        const constTable = this.transformTable;
+
         const [virtual] = input;
         const firstLettersMapped = virtual
           .map((letter) => {
-            const letterData = this.transformTable
-              .map<[TagSystemLetter | undefined, number]>((elm, index) => [elm[0], index])
+            const letterData = constTable
+              .map<[TagSystemLetter | undefined, number]>((elm, index) => [elm.letter, index])
               .find((letterAndIndex) => letterAndIndex[0] === letter);
 
             if (letterData === undefined)
               throw new Error(`This system cannot accept "${letter.value}" as input.`);
 
-            const tableElm = this.transformTable[letterData[1]];
-            return [...tableElm[3], M];
+            const tableElm = constTable[letterData[1]];
+            return [...tableElm.charRepresent, M];
           })
           .reduce((a, b) => [...a, ...b]);
 
         const rules = [...this.transformTable]
           .reverse()
-          .map((elm) => elm[4])
+          .map((elm) => elm.outRepresent)
           .reduce((a, b) => [...a, ...b]);
 
         const word = [...rules, F, F, ...firstLettersMapped];
@@ -264,54 +292,66 @@ Science, 168(2):215–240, 1996.
 
         if (stopLetter !== null) organizedLetters.push(stopLetter);
 
-        let table: [
-          letter: TagSystemLetter | undefined,
-          output: TagSystemWord | "STOP" | undefined,
-          N: number,
-          charRepresent: TMSymbol[] | undefined,
-          outRepresent: TMSymbol[] | undefined
-        ][] = organizedLetters.map((letter) => {
+        let table: {
+          letter: TagSystemLetter | undefined;
+          output: TagSystemWord | "STOP" | undefined;
+          N: number;
+          charRepresent: TMSymbol[] | undefined;
+          outRepresent: TMSymbol[] | undefined;
+        }[] = organizedLetters.map((letter) => {
           const ruleOut = ruleSet.getCandinates(letter);
           if (ruleOut.stop) {
             //"STOP" should come at the end of the table
-            return [letter, "STOP", -1, undefined, undefined];
+            return {
+              letter: letter,
+              output: "STOP",
+              N: -1,
+              charRepresent: undefined,
+              outRepresent: undefined,
+            };
           } else {
-            return [letter, ruleOut.writeWord, -1, undefined, undefined];
+            return {
+              letter: letter,
+              output: ruleOut.writeWord,
+              N: -1,
+              charRepresent: undefined,
+              outRepresent: undefined,
+            };
           }
         });
 
         //Determine charRepresent
         table.forEach((elm, i) => {
           if (i === 0) {
-            elm[2] = 1;
+            elm.N = 1;
           } else {
-            const beforeRuleOutput = table[i - 1][1];
+            const beforeRuleOutput = table[i - 1].output;
             /* istanbul ignore next */
             if (beforeRuleOutput === "STOP" || beforeRuleOutput === undefined)
               throw new Error("Internal Error!");
 
-            elm[2] = table[i - 1][2] + beforeRuleOutput.asLetters().length + 1;
+            elm.N = table[i - 1].N + beforeRuleOutput.asLetters().length + 1;
           }
 
-          elm[3] = Array<TMSymbol>(elm[2]).fill(A);
+          elm.charRepresent = Array<TMSymbol>(elm.N).fill(A);
         });
 
         //Determine outputRepresent
         table.forEach((elm) => {
-          if (elm[1] === "STOP") {
-            elm[4] = [Q, Q];
+          if (elm.output === "STOP") {
+            elm.outRepresent = [Q, Q];
           } else {
             /* istanbul ignore next */
-            if (elm[1] === undefined) throw new Error("Internal Error!");
+            if (elm.output === undefined) throw new Error("Internal Error!");
 
-            const outputLetters = [...elm[1].asLetters()];
+            const outputLetters = [...elm.output.asLetters()];
             const outputLettersMapped = outputLetters.reverse().map((mapLetter) => {
               const letterData = table
-                .map<[TagSystemLetter | undefined, number]>((elm, index) => [elm[0], index])
+                .map<[TagSystemLetter | undefined, number]>((elm, index) => [elm.letter, index])
                 .find((letterAndIndex) => letterAndIndex[0] === mapLetter);
               /* istanbul ignore next */
               if (letterData === undefined) throw new Error("Internal Error!");
-              const ret = table[letterData[1]][3];
+              const ret = table[letterData[1]].charRepresent;
               /* istanbul ignore next */
               if (ret === undefined) throw new Error("Internal Error!");
               return ret;
@@ -324,27 +364,33 @@ Science, 168(2):215–240, 1996.
               .reduce((a, b) => [...a, ...b])
               .slice(2);
 
-            elm[4] = [F, F, ...outputLettersConcated];
+            elm.outRepresent = [F, F, ...outputLettersConcated];
           }
         });
 
         this.transformTable = table.map((elm) => {
-          const [a, b, c, d, e] = elm;
+          const { letter, output, N, charRepresent, outRepresent } = elm;
           /* istanbul ignore next */
           if (
-            a === undefined ||
-            b === undefined ||
-            c === undefined ||
-            d === undefined ||
-            e === undefined
+            letter === undefined ||
+            output === undefined ||
+            N === undefined ||
+            charRepresent === undefined ||
+            outRepresent === undefined
           ) {
             throw new Error("Internal Error!");
           }
-          return [a, b, c, d, e];
+          return {
+            letter: letter,
+            output: output,
+            N: N,
+            charRepresent: charRepresent,
+            outRepresent: outRepresent,
+          };
         });
       }
 
-      getTransFormLogTable(): ({ value: string } | { toString: () => string })[][] {
+      getTransFormLog(): Tag2SystemToTuringMachine218TransformLog | null {
         return this.transformTable;
       }
     })();
@@ -353,30 +399,57 @@ Science, 168(2):215–240, 1996.
   }
 
   public static turingMachine2SymbolToMoveFirstTuringMachine<
-    S extends [...ComputationSystem[], TuringMachine]
+    S extends [...ComputationSystem[], TuringMachine],
+    TransformLog extends unknown[] = []
   >(
-    hierarchy: ITransformHierarchy<S>,
+    hierarchy: ITransformHierarchy<S, TransformLog>,
     firstSymbol: TMSymbol
-  ): ITransformHierarchy<[...S, MoveFirstTuringMachine]> {
+  ): ITransformHierarchy<
+    [...S, MoveFirstTuringMachine],
+    [...TransformLog, TuringMachine2SymbolToMoveFirstTuringMachineTransformLog]
+  > {
     let result = this._turingMachine2SymbolToMoveFirstTuringMachine(firstSymbol);
 
-    return hierarchy.appendLastAndNewHierarchy<MoveFirstTuringMachine>(result);
+    return hierarchy.appendLastAndNewHierarchy<
+      MoveFirstTuringMachine,
+      TuringMachine2SymbolToMoveFirstTuringMachineTransformLog
+    >(result);
   }
 
   public static turingMachine2SymbolToMoveFirstTuringMachineNew(
     firstSymbol: TMSymbol
-  ): ITransformHierarchy<[TuringMachine, MoveFirstTuringMachine]> {
+  ): ITransformHierarchy<
+    [TuringMachine, MoveFirstTuringMachine],
+    [TuringMachine2SymbolToMoveFirstTuringMachineTransformLog]
+  > {
     let result = this._turingMachine2SymbolToMoveFirstTuringMachine(firstSymbol);
 
-    return new TransformHierarchy<[TuringMachine, MoveFirstTuringMachine]>([result]);
+    return new TransformHierarchy<
+      [TuringMachine, MoveFirstTuringMachine],
+      [TuringMachine2SymbolToMoveFirstTuringMachineTransformLog]
+    >([result]);
   }
 
   private static _turingMachine2SymbolToMoveFirstTuringMachine(
     firstSymbol: TMSymbol
-  ): ITransformElement<TuringMachine, MoveFirstTuringMachine> {
+  ): ITransformElement<
+    TuringMachine,
+    MoveFirstTuringMachine,
+    TuringMachine2SymbolToMoveFirstTuringMachineTransformLog
+  > {
     const transformElement = new (class
-      implements ITransformElement<TuringMachine, MoveFirstTuringMachine>
+      implements
+        ITransformElement<
+          TuringMachine,
+          MoveFirstTuringMachine,
+          TuringMachine2SymbolToMoveFirstTuringMachineTransformLog
+        >
     {
+      private transformLog: TuringMachine2SymbolToMoveFirstTuringMachineTransformLog | null = null;
+
+      getTransFormLog(): TuringMachine2SymbolToMoveFirstTuringMachineTransformLog | null {
+        return this.transformLog;
+      }
       asTuple(): {
         stateSet: Set<TMState>;
         symbolSet: Set<TMSymbol>;
@@ -390,9 +463,6 @@ Science, 168(2):215–240, 1996.
       }
       asIndependantSystem(): MoveFirstTuringMachine | null {
         return this.tmSample === null ? null : this.tmSample.clone();
-      }
-      getTransFormLogTable(): TransformLogTable {
-        throw new Error("Method not implemented.");
       }
       tmSample: MoveFirstTuringMachine | null = null;
 
@@ -441,6 +511,15 @@ Science, 168(2):215–240, 1996.
           }
         };
 
+        const transformTable: {
+          originalRule: {
+            state: TMState;
+            read: TMSymbol;
+            out: TMRuleOutput;
+          };
+          transformedRule: MoveFirstTMRule;
+        }[] = [];
+
         const ruleSetBuilder = MoveFirstTMRuleSet.builder();
         states.forEach((state) => {
           symbols.forEach((symbol) => {
@@ -452,6 +531,31 @@ Science, 168(2):215–240, 1996.
                   .state(concatStrAndNew(state, symbol), candinate.write, candinate.move)
                   .add(symbols[0], concatStrAndNew(candinate.nextState, symbols[0]))
                   .add(symbols[1], concatStrAndNew(candinate.nextState, symbols[1]));
+
+                transformTable.push({
+                  originalRule: {
+                    state: state,
+                    read: symbol,
+                    out: candinate,
+                  },
+                  transformedRule: {
+                    nowState: concatStrAndNew(state, symbol),
+                    out: {
+                      write: candinate.write,
+                      move: candinate.move,
+                      changeStates: [
+                        {
+                          read: symbols[0],
+                          thenGoTo: concatStrAndNew(candinate.nextState, symbols[0]),
+                        },
+                        {
+                          read: symbols[1],
+                          thenGoTo: concatStrAndNew(candinate.nextState, symbols[1]),
+                        },
+                      ],
+                    },
+                  },
+                });
               }
             });
           });
@@ -465,6 +569,12 @@ Science, 168(2):215–240, 1996.
           firstState,
           acceptStateCopy
         );
+
+        this.transformLog = {
+          symbol0: symbols[0],
+          symbol1: symbols[1],
+          ruleTable: transformTable,
+        };
       }
     })();
 
@@ -472,19 +582,29 @@ Science, 168(2):215–240, 1996.
   }
 
   public static moveFirstTM2SymbolToTagSystem<
-    S extends [...ComputationSystem[], MoveFirstTuringMachine]
-  >(hierarchy: ITransformHierarchy<S>): ITransformHierarchy<[...S, TagSystem]> {
+    S extends [...ComputationSystem[], MoveFirstTuringMachine],
+    T extends unknown[]
+  >(
+    hierarchy: ITransformHierarchy<S, T>
+  ): ITransformHierarchy<[...S, TagSystem], [...T, MoveFirstTM2SymbolToTagSystemTransformLog]> {
     let result = this._moveFirstTM2SymbolToTagSystem();
 
-    return hierarchy.appendLastAndNewHierarchy<TagSystem>(result);
+    return hierarchy.appendLastAndNewHierarchy<
+      TagSystem,
+      MoveFirstTM2SymbolToTagSystemTransformLog
+    >(result);
   }
 
   public static moveFirstTM2SymbolToTagSystemNew(): ITransformHierarchy<
-    [MoveFirstTuringMachine, TagSystem]
+    [MoveFirstTuringMachine, TagSystem],
+    [MoveFirstTM2SymbolToTagSystemTransformLog]
   > {
     let result = this._moveFirstTM2SymbolToTagSystem();
 
-    return new TransformHierarchy<[MoveFirstTuringMachine, TagSystem]>([result]);
+    return new TransformHierarchy<
+      [MoveFirstTuringMachine, TagSystem],
+      [MoveFirstTM2SymbolToTagSystemTransformLog]
+    >([result]);
   }
 
   /**
@@ -492,29 +612,26 @@ Science, 168(2):215–240, 1996.
    */
   private static _moveFirstTM2SymbolToTagSystem(): ITransformElement<
     MoveFirstTuringMachine,
-    TagSystem
+    TagSystem,
+    MoveFirstTM2SymbolToTagSystemTransformLog
   > {
-    return new (class implements ITransformElement<MoveFirstTuringMachine, TagSystem> {
+    return new (class
+      implements
+        ITransformElement<
+          MoveFirstTuringMachine,
+          TagSystem,
+          MoveFirstTM2SymbolToTagSystemTransformLog
+        >
+    {
       tagSystemSample: TagSystem | null = null;
-      transformLog:
-        | {
-            letterX: TagSystemLetter;
-            symbol0: TMSymbol;
-            symbol1: TMSymbol;
-            initState: TMState;
-            symbolCorrespondenceTable: {
-              state: TMState;
-              A: TagSystemLetter;
-              B: TagSystemLetter;
-              alpha: TagSystemLetter;
-              beta: TagSystemLetter;
-            }[];
-          }
-        | undefined = undefined;
+      transformLog: MoveFirstTM2SymbolToTagSystemTransformLog | null = null;
 
+      getTransFormLog(): MoveFirstTM2SymbolToTagSystemTransformLog | null {
+        return this.transformLog;
+      }
       interpretConfigration(real: TagSystemConfiguration | null): TMConfiguration | null {
         if (real === null) return null;
-        if (this.transformLog === undefined) return null;
+        if (this.transformLog === null) return null;
 
         const { word } = real;
         const wordLetters = word.asLetters();
@@ -585,7 +702,7 @@ Science, 168(2):215–240, 1996.
       interpretInput(
         virtual: [word: TMSymbol[], headPosition: number]
       ): [letters: TagSystemLetter[]] {
-        if (this.transformLog === undefined) throw new Error();
+        if (this.transformLog === null) throw new Error();
 
         const [word, headPosition] = virtual;
         const { letterX, symbol0, initState, symbolCorrespondenceTable } = {
@@ -840,9 +957,6 @@ Science, 168(2):215–240, 1996.
       asIndependantSystem(): TagSystem | null {
         return this.tagSystemSample === null ? null : this.tagSystemSample.clone();
       }
-      getTransFormLogTable(): TransformLogTable {
-        throw new Error("Method not implemented.");
-      }
     })();
   }
 }
@@ -854,21 +968,30 @@ export type SystemConfigration<T extends ComputationSystem> = Exclude<
 >;
 export type SystemTuple<T extends ComputationSystem> = ReturnType<T["asTuple"]>;
 
-export interface ITransformElement<Take extends ComputationSystem, As extends ComputationSystem> {
+export interface ITransformElement<
+  Take extends ComputationSystem,
+  As extends ComputationSystem,
+  TransformLog
+> {
   interpretConfigration(real: SystemConfigration<As> | null): SystemConfigration<Take> | null;
   interpretInput(virtual: SystemInput<Take>): SystemInput<As>;
   bind(system: SystemTuple<Take>): void;
   asTuple(): SystemTuple<As> | null;
   asIndependantSystem(): As | null;
-  getTransFormLogTable(): TransformLogTable;
+  getTransFormLog(): TransformLog | null;
 }
 
-type SystemsAsHierarchyElements<S extends ComputationSystem[] | unknown> =
-  S extends ComputationSystem[]
-    ? S["length"] extends 2
-      ? [ITransformElement<S[0], S[1]>]
-      : [ITransformElement<S[0], S[1]>, ...SystemsAsHierarchyElements<Remove1<S>>]
-    : [];
+type SystemsAsHierarchyElements<
+  S extends ComputationSystem[] | unknown,
+  TransformLog extends unknown[]
+> = S extends ComputationSystem[]
+  ? S["length"] extends 2
+    ? [ITransformElement<S[0], S[1], TransformLog[0]>]
+    : [
+        ITransformElement<S[0], S[1], TransformLog[0]>,
+        ...SystemsAsHierarchyElements<Remove1<S>, Remove1<TransformLog>>
+      ]
+  : [];
 
 export type Remove2<T extends unknown[]> = T extends [infer _, infer _, ...infer Rests]
   ? Rests
@@ -877,7 +1000,10 @@ export type Remove1<T extends unknown[]> = T extends [infer _, ...infer Rests] ?
 export type FirstOf<T extends unknown[]> = T extends [infer F, ...infer _] ? F : T[0];
 export type LastOf<T extends unknown[]> = T extends [...infer _, infer Last] ? Last : T[0];
 
-export interface ITransformHierarchy<S extends ComputationSystem[]> {
+export interface ITransformHierarchy<
+  S extends ComputationSystem[],
+  TransformLog extends unknown[]
+> {
   start(inputSystem: FirstOf<S>, input: SystemInput<FirstOf<S>>): void;
 
   proceed(step: number): void;
@@ -885,25 +1011,25 @@ export interface ITransformHierarchy<S extends ComputationSystem[]> {
   getConfiguration<N extends number>(system: N): SystemConfigration<S[N]> | null;
   getTuple<N extends number>(system: N): SystemTuple<S[N]> | null;
   asIndependantSystem<N extends number>(system: N): S[N] | null;
-  getTransFormLogTable(smallerSystem: number): TransformLogTable | null;
-  appendLastAndNewHierarchy<Add extends ComputationSystem>(
-    append: ITransformElement<LastOf<S>, Add>
-  ): ITransformHierarchy<[...S, Add]>;
+  getTransFormLogOf<S extends number>(smallerSystem: S): TransformLog[S] | null;
+  appendLastAndNewHierarchy<Add extends ComputationSystem, TransformLogAdd>(
+    append: ITransformElement<LastOf<S>, Add, TransformLogAdd>
+  ): ITransformHierarchy<[...S, Add], [...TransformLog, TransformLogAdd]>;
 }
 
-class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHierarchy<S> {
-  private elements: SystemsAsHierarchyElements<S>;
+class TransformHierarchy<S extends ComputationSystem[], TransformLog extends unknown[]>
+  implements ITransformHierarchy<S, TransformLog>
+{
+  private elements: SystemsAsHierarchyElements<S, TransformLog>;
   private baseSystem: LastOf<S> | null = null;
   private inputSystemSample: FirstOf<S> | null = null;
 
-  public constructor(elements: SystemsAsHierarchyElements<S>) {
+  public constructor(elements: SystemsAsHierarchyElements<S, TransformLog>) {
     this.elements = elements;
   }
 
-  getTransFormLogTable(smallerSystem: number): TransformLogTable | null {
-    return this.inputSystemSample === null
-      ? null
-      : this.elements[smallerSystem].getTransFormLogTable();
+  getTransFormLogOf<S extends number>(smallerSystem: S): TransformLog[S] | null {
+    return this.inputSystemSample === null ? null : this.elements[smallerSystem].getTransFormLog();
   }
 
   stopped(): boolean {
@@ -983,13 +1109,13 @@ class TransformHierarchy<S extends ComputationSystem[]> implements ITransformHie
     return ret as S[N];
   }
 
-  appendLastAndNewHierarchy<Add extends ComputationSystem>(
-    append: ITransformElement<LastOf<S>, Add>
-  ): ITransformHierarchy<[...S, Add]> {
+  appendLastAndNewHierarchy<Add extends ComputationSystem, TransformLogAdd>(
+    append: ITransformElement<LastOf<S>, Add, TransformLogAdd>
+  ): ITransformHierarchy<[...S, Add], [...TransformLog, TransformLogAdd]> {
     const copyelements = [...this.elements];
     copyelements.push(append);
-    return new TransformHierarchy<[...S, Add]>(
-      copyelements as SystemsAsHierarchyElements<[...S, Add]>
+    return new TransformHierarchy<[...S, Add], [...TransformLog, TransformLogAdd]>(
+      copyelements as SystemsAsHierarchyElements<[...S, Add], [...TransformLog, TransformLogAdd]>
     );
   }
 }

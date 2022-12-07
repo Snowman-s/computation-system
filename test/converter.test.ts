@@ -6,8 +6,6 @@ import {
   TagSystemWord,
   TuringMachine,
   Converter,
-  ITransformHierarchy,
-  TransformLogTableElm,
   TMSymbol,
   TMSymbolFrom,
   TMStateFrom,
@@ -28,8 +26,7 @@ describe("ConverterTest", () => {
       .build();
     const tagSystem = new TagSystem(2, tagSystemRuleSet);
 
-    const transformHierarchy: ITransformHierarchy<[TagSystem, TuringMachine]> =
-      Converter.tag2SystemToTuringMachine218New();
+    const transformHierarchy = Converter.tag2SystemToTuringMachine218New();
 
     transformHierarchy.start(tagSystem, [[A, B, B]]);
 
@@ -65,26 +62,20 @@ describe("ConverterTest", () => {
     expect(transformHierarchy.asIndependantSystem(0)).toBeInstanceOf(TagSystem);
     expect(transformHierarchy.asIndependantSystem(1)).toBeInstanceOf(TuringMachine);
 
-    let table = transformHierarchy.getTransFormLogTable(0)!;
-    let mapper = function mapper(elm: TransformLogTableElm): any {
-      if ("value" in elm) {
-        return elm.value;
-      } else if (Array.isArray(elm)) {
-        return elm.map((elm2) => mapper(elm2));
-      } else {
-        return elm.toString();
-      }
-    };
+    let table = transformHierarchy.getTransFormLogOf(0)!;
+
     //その解釈結果が何の文字か？
-    expect(mapper(table[0][0])).toBe("A");
+    expect(table[0].letter.value).toBe("A");
     //その文字は何を出力するか？
-    expect(mapper(table[1][1])).toBe("A");
+    expect((table[1].output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
+      "A",
+    ]);
     //その文字はどう表現されるか？
-    expect(mapper(table[1][3])).toEqual(["A", "A", "A", "A"]);
+    expect(table[1].charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A", "A"]);
     //その文字の出力はどう表現されるか？
-    expect(mapper(table[1][4])).toEqual(["F", "F", "A"]);
+    expect(table[1].outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A"]);
     //その文字の出力はどう表現されるか？ (STOP命令)
-    expect(mapper(table[2][4])).toEqual(["Q", "Q"]);
+    expect(table[2].outRepresent.map((symbol) => symbol.value)).toEqual(["Q", "Q"]);
   });
   it("MonkeyTagSystem2TuringMachine", () => {
     const [A, B, H] = TagSystemLetterFrom("A", "B", "H");
@@ -97,21 +88,20 @@ describe("ConverterTest", () => {
     const tagSystem = new TagSystem(10, tagSystemRuleSet);
     const validTagSystem = new TagSystem(2, tagSystemRuleSet);
 
-    const transformHierarchy: ITransformHierarchy<[TagSystem, TuringMachine]> =
-      Converter.tag2SystemToTuringMachine218New();
+    const transformHierarchy = Converter.tag2SystemToTuringMachine218New();
 
     expect(() => transformHierarchy.start(tagSystem, [[A, B, B]])).toThrowError();
 
     expect(transformHierarchy.getTuple(0)).toBeNull();
     expect(transformHierarchy.getConfiguration(0)).toBeNull();
     expect(transformHierarchy.asIndependantSystem(0)).toBeNull();
-    expect(transformHierarchy.getTransFormLogTable(0)).toBeNull();
+    expect(transformHierarchy.getTransFormLogOf(0)).toBeNull();
 
     transformHierarchy.start(validTagSystem, [[A, B, B]]);
     expect(transformHierarchy.getTuple(0)).toEqual(validTagSystem.asTuple());
     expect(transformHierarchy.asIndependantSystem(0)).not.toBeNull();
 
-    expect(() => transformHierarchy.getTransFormLogTable(1)).toThrowError();
+    expect(() => transformHierarchy.getTransFormLogOf(1)).toThrowError();
   });
   it("TuringMachine2SymbolToMoveFirstTuringMachine", () => {
     let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
@@ -200,7 +190,7 @@ describe("ConverterTest", () => {
     }
 
     const tmtape = hierarchy.getConfiguration(0)?.tape;
-    expect(tmtape?.toString()).toEqual("…ABBBA…");
+    expect(tmtape?.toString()).toMatch(/…ABB.A…/);
     const word = hierarchy.getConfiguration(1)?.word;
     expect(word?.toString()).toEqual("A_3xα_3xα_3xα_3xB_3x");
   });
