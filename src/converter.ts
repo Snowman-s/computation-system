@@ -688,7 +688,7 @@ Science, 168(2):215–240, 1996.
           .map((t) => (t === "0" ? symbol0 : symbol1));
 
         const tape = TMTape.create(
-          leftToSymbols.concat(rightToSymbols),
+          leftToSymbols.concat([{ value: "*", meaning: "symbol" }]).concat(rightToSymbols),
           this.transformLog.symbol0
         ).locked();
 
@@ -709,12 +709,12 @@ Science, 168(2):215–240, 1996.
           ...this.transformLog,
         };
 
-        const left = word.slice(0, headPosition);
+        const left = word.slice(0, headPosition).reverse();
         const right = word.slice(headPosition + 1);
 
         const leftNum = left
           .map((elm, index) => {
-            return elm === symbol0 ? 0 : Math.pow(2, left.length - index);
+            return elm === symbol0 ? 0 : Math.pow(2, index);
           })
           .reduce((a, b) => a + b, 0);
         const rightNum = right
@@ -746,24 +746,15 @@ Science, 168(2):215–240, 1996.
         const { stateSet, symbolSet, blankSymbol, ruleset, initState, acceptState } = system;
 
         const [symbol0, symbol1]: TMSymbol[] = (function () {
-          switch (symbolSet.size) {
-            case 0:
-              return TMSymbolFrom("0", "1");
-            case 1:
-              if ([...symbolSet.values()][0] === blankSymbol) {
-                return [symbolSet.entries().next().value, TMSymbolFrom("*")[0]];
-              } else {
-                return [TMSymbolFrom("*")[0], symbolSet.entries().next().value];
-              }
-            case 2:
-              const array = [...symbolSet];
-              if (array[0] === blankSymbol) {
-                return array;
-              } else {
-                return [array[1], array[0]];
-              }
-            default:
-              throw new Error();
+          if (symbolSet.size !== 2) {
+            throw new Error();
+          }
+
+          const array = [...symbolSet];
+          if (array[0] === blankSymbol) {
+            return array;
+          } else {
+            return [array[1], array[0]];
           }
         })();
 
@@ -783,12 +774,12 @@ Science, 168(2):215–240, 1996.
         const lettersPool: TagSystemLetter[] = [];
 
         states.forEach((state, index) => {
-          const tmoutCndinates = ruleset.getCandinates(state);
-          if (state !== acceptState && tmoutCndinates.length == 0) return;
-          if (tmoutCndinates.length > 1) {
+          const tmoutCandinates = ruleset.getCandinates(state);
+          if (state !== acceptState && tmoutCandinates.length == 0) throw new Error();
+          if (tmoutCandinates.length > 1) {
             throw new Error();
           }
-          const tmout = tmoutCndinates[0];
+          const tmout = tmoutCandinates[0];
 
           const toLetter = function (char: string, appendSymbol?: 0 | 1, d?: "'") {
             const appendStr = (function () {
@@ -828,18 +819,7 @@ Science, 168(2):215–240, 1996.
             })();
 
             const str = (function () {
-              let ret = char;
-
-              switch (appendStr.length) {
-                case 0:
-                  break;
-                case 1:
-                  ret += "_" + appendStr;
-                  break;
-                default:
-                  ret += "_{" + appendStr + "}";
-                  break;
-              }
+              let ret = char + (appendStr.length === 1 ? "_" + appendStr : "_{" + appendStr + "}");
 
               return d ? "{" + ret + "}" + d : ret;
             })();

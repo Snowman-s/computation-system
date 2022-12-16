@@ -13,7 +13,9 @@ import {
   TMRuleSet,
   MoveFirstTMRuleSet,
   MoveFirstTuringMachine,
+  ITransformHierarchy,
 } from "../src/computation-system";
+import { MoveFirstTM2SymbolToTagSystemTransformLog } from "../src/transform-log-types";
 
 describe("ConverterTest", () => {
   it("TagSystem2TuringMachine", () => {
@@ -163,35 +165,264 @@ describe("ConverterTest", () => {
     expect(hierarchy.getConfiguration(1)).not.toBeNull();
     expect(hierarchy.getTuple(1)).not.toBeNull();
   });
-  it("MoveFirstTM2SymbolToTagSystem", () => {
-    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-    let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+  describe("MoveFirstTM2SymbolToTagSystem", () => {
+    test("Normal", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-    let ruleset = MoveFirstTMRuleSet.builder()
-      .state(q1, A, "R")
-      .add(A, q1)
-      .add(B, q2)
-      .state(q2, A, "L")
-      .add(A, q3)
-      .add(B, q3)
-      .state(q3, B, "R")
-      .add(A, q3)
-      .add(B, qf)
-      .build();
+      let ruleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q3)
+        .add(B, qf)
+        .build();
 
-    let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
+      let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
 
-    let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
 
-    hierarchy.start(tm, [[A, B, B], 0]);
+      hierarchy.start(tm, [[A, B, B], 0]);
 
-    while (!hierarchy.stopped()) {
-      hierarchy.proceed(1);
-    }
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
 
-    const tmtape = hierarchy.getConfiguration(0)?.tape;
-    expect(tmtape?.toString()).toMatch(/…ABB.A…/);
-    const word = hierarchy.getConfiguration(1)?.word;
-    expect(word?.toString()).toEqual("A_3xα_3xα_3xα_3xB_3x");
+      const word = hierarchy.getConfiguration(1)?.word;
+      expect(word?.toString()).toEqual("A_3xα_3xα_3xα_3xB_3x");
+      const tmtape = hierarchy.getConfiguration(0)?.tape;
+      expect(tmtape?.toString()).toMatch(/…ABB.AA…/);
+
+      const initStateTransformData = hierarchy
+        .getTransFormLogOf(0)
+        ?.symbolCorrespondenceTable.filter((data) => data.state == q1)[0]!;
+
+      const initStateOutput = hierarchy
+        .getTuple(1)
+        ?.ruleSet.getCandinates(initStateTransformData.A!);
+
+      if (initStateOutput?.stop == true) fail();
+      expect(initStateOutput?.writeWord.asLetters()[0].value).toBe("C_0");
+    });
+    test("Work if blank symbol is changed with another letter", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+      let ruleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q3)
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(B, ruleset, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      hierarchy.start(tm, [[A, B, B], 0]);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const word = hierarchy.getConfiguration(1)?.word;
+      expect(word?.toString()).toEqual("A_3xB_3x");
+      const tmtape = hierarchy.getConfiguration(0)?.tape;
+      expect(tmtape?.toString()).toMatch(/…BB.BB…/);
+    });
+    test("Work if head position > 0", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+      let ruleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q3)
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      hierarchy.start(tm, [[A, B, A, B, B], 2]);
+      const tmtapeBeforeExecuted = hierarchy.getConfiguration(0)?.tape;
+      expect(tmtapeBeforeExecuted?.toString()).toMatch(/…AB.BBA…/);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const word = hierarchy.getConfiguration(1)?.word;
+      expect(word?.toString()).toEqual("A_3x" + "α_3x".repeat(7) + "B_3x");
+      const tmtape = hierarchy.getConfiguration(0)?.tape;
+      expect(tmtape?.toString()).toMatch(/…ABBB.AA…/);
+    });
+    test("Error if any state(s) have no corresponding rules", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, q4, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "q4", "qf");
+
+      let ruleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q4)
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
+    });
+    test("Error if any state(s) have 2 or more corresponding rules", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+      let ruleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q3)
+        .add(B, qf)
+        .state(q3, A, "R")
+        .add(A, q3)
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
+    });
+    test("Error if any state(s) have incomplete read-move rule", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+      let rulesetWithoutA = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(A, rulesetWithoutA, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
+
+      let rulesetWithoutB = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q3)
+        .build();
+
+      let tm2 = new MoveFirstTuringMachine(A, rulesetWithoutB, q1, qf);
+
+      expect(() => hierarchy.start(tm2, [[A, B, B], 0])).toThrowError();
+    });
+    test('Error if any state(s) have "HALT" rule', () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+      let ruleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, A, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .addHALT(A)
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(A, ruleset, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
+    });
+    test("Tuple and config is null before executed", () => {
+      let hierarchy: ITransformHierarchy<
+        [MoveFirstTuringMachine, TagSystem],
+        [MoveFirstTM2SymbolToTagSystemTransformLog]
+      >;
+      hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+      expect(hierarchy.getTuple(0)).toBeNull();
+      expect(hierarchy.getTuple(1)).toBeNull();
+      expect(hierarchy.asIndependantSystem(0)).toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).toBeNull();
+      expect(hierarchy.getConfiguration(0)).toBeNull();
+      expect(hierarchy.getConfiguration(1)).toBeNull();
+    });
+    test("Error if not init-state used in TMRule", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+
+      let ruleset = MoveFirstTMRuleSet.builder().state(q2, A, "R").add(A, q2).add(B, q2).build();
+
+      let tm = new MoveFirstTuringMachine(A, ruleset, q2, q1);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
+    });
+    test("Error if 3-alphabet used for TMRule", () => {
+      let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+
+      let errorRuleset = MoveFirstTMRuleSet.builder()
+        .state(q1, A, "R")
+        .add(A, q1)
+        .add(B, q2)
+        .state(q2, C, "L")
+        .add(A, q3)
+        .add(B, q3)
+        .state(q3, B, "R")
+        .add(A, q3)
+        .add(B, qf)
+        .build();
+
+      let tm = new MoveFirstTuringMachine(A, errorRuleset, q1, qf);
+
+      let hierarchy = Converter.moveFirstTM2SymbolToTagSystemNew();
+
+      expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
+    });
   });
 });
