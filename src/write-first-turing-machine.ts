@@ -22,14 +22,14 @@ export type WriteFirstTMRule = {
 };
 
 /**
- * The Move-First Turing Machine's program.
+ * The Write-First Turing Machine's program.
  *
  * @remarks
  * You should use {@link WriteFirstTMRuleSet.builder} to construct this.
  */
 export class WriteFirstTMRuleSet {
   /**
-   * Create builder for TMRuleSet.
+   * Create builder for WriteFirstTMRuleSet.
    * @returns created builder
    */
   public static builder() {
@@ -43,7 +43,7 @@ export class WriteFirstTMRuleSet {
    *
    * @remarks
    * This method is used by the library.
-   * Usually, users should use {@link TMRuleSet.builder}.
+   * Usually, users should use {@link WriteFirstTMRuleSet.builder}.
    *
    * @param rules list of rule
    */
@@ -52,9 +52,8 @@ export class WriteFirstTMRuleSet {
   }
 
   /**
-   * Returns what kind of change occurred in the Turing machine when the given state and the symbol read.
+   * Returns what kind of change occurred in the Turing machine when the given state.
    * @param state now turing machine's state
-   * @param nowSymbol symbol read on the turing machine
    * @returns list of what indicates kind of change
    */
   public getCandinates(state: TMState) {
@@ -129,7 +128,7 @@ export class WriteFirstTMRuleSet {
 }
 
 /**
- * A builder to build the Move-First Turing Machine's ruleset.
+ * A builder to build the Write-First Turing Machine's ruleset.
  * @see {@link WriteFirstTMRuleSet}
  */
 export class WriteFirstTMRuleSetBuilder {
@@ -152,6 +151,8 @@ export class WriteFirstTMRuleSetBuilder {
    * @see {@link WriteFirstTMRuleSetBuilder.add}
    *
    * @param state The state the rules to be added are related to.
+   * @param write
+   * @param move
    * @returns This builder, to method chains.
    */
   public state(state: TMState, write: TMSymbol, move: TMMove) {
@@ -163,10 +164,10 @@ export class WriteFirstTMRuleSetBuilder {
    * Add rule to this builder.
    *
    * @remarks
+   * The rule is interpreted as "When it is at *state* then write *write* symbol, and move head to *move*. Next, read symbol that location, then it's *read*, change state to *nextState*.
+   * *state*, *write* and *move* is set by {@link WriteFirstTMRuleSetBuilder.state}.
    *
    * @param read
-   * @param write
-   * @param move
    * @param nextState
    * @returns This builder, to method chains.
    */
@@ -217,8 +218,8 @@ export class WriteFirstTMRuleSetBuilder {
    * Add HALT rule to this builder.
    *
    * @remarks
-   * The rule is interpreted as "When read *read* symbol at *state* then stop the machine".
-   * *state* is set by {@link TMRuleSetBuilder.state}.
+   * The rule is interpreted as "When it is at *state* then write *write* symbol, and move head to *move*. Next, read symbol that location, then it's *read*, stop the machine.
+   * *state*, *write* and *move* is set by {@link WriteFirstTMRuleSetBuilder.state}.
    *
    * @param read
    * @returns This builder, to method chains.
@@ -276,7 +277,7 @@ export class WriteFirstTMRuleSetBuilder {
 }
 
 /**
- * A object for simulate the turing machine, but the machine's head will move before read the tape.
+ * A object for simulate the turing machine, but the machine will write symbol before read the tape.
  */
 export class WriteFirstTuringMachine implements ComputationSystem {
   private readonly blank: TMSymbol;
@@ -336,12 +337,12 @@ export class WriteFirstTuringMachine implements ComputationSystem {
   }
 
   /**
-   * Proceeds with this machine. This method must be called after {@link TuringMachine.start} called, or get an error,
+   * Proceeds with this machine. This method must be called after {@link WriteFirstTuringMachine.start} called, or get an error,
    *
    * @remarks
-   * One "step" is a series of processes that reads a symbol, changes its state, writes the symbol, and moves the head.
+   * One "step" is a series of processes that writes the symbol, moves the head, reads a symbol, and changes its state.
    * @remarks
-   * This method does not change the machine status, if {@link TuringMachine.isAccepted} or {@link TuringMachine.isHalted} is true.
+   * This method does not change the machine status, if {@link WriteFirstTuringMachine.isAccepted} or {@link WriteFirstTuringMachine.isHalted} is true.
    *
    * @param step Non-negative integer indicating how many steps to advance this machine.
    */
@@ -416,7 +417,7 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    * Returns whether this machine is halted.
    *
    * @remarks
-   * The machine will stop if {@link TuringMachine.isAccepted} is true, but it is not treated as "halt".
+   * The machine will stop if {@link WriteFirstTuringMachine.isAccepted} is true, but it is not treated as "halt".
    *
    * @returns True if this machine is halted, false otherwise.
    */
@@ -471,7 +472,7 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    * - tape - Symbols on tape for this machine.
    * - headPosition - Relative position of this machine's current head.
    *
-   * @returns Current status of this machine if {@link TuringMachine.start} was called, false otherwise.
+   * @returns Current status of this machine if {@link WriteFirstTuringMachine.start} was called, false otherwise.
    */
   public getConfiguration(): TMConfiguration | null {
     if (this.tape === null || this.nowState === null) {
