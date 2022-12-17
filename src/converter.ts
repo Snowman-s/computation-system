@@ -19,14 +19,14 @@ import {
 } from "./turing-machine";
 import {
   ComputationSystem,
-  MoveFirstTMRule,
-  MoveFirstTMRuleSet,
-  MoveFirstTuringMachine,
+  WriteFirstTMRule,
+  WriteFirstTMRuleSet,
+  WriteFirstTuringMachine,
 } from "./computation-system";
 import {
-  MoveFirstTM2SymbolToTagSystemTransformLog,
+  WriteFirstTM2SymbolToTagSystemTransformLog,
   Tag2SystemToTuringMachine218TransformLog,
-  TuringMachine2SymbolToMoveFirstTuringMachineTransformLog,
+  TuringMachine2SymbolToWriteFirstTuringMachineTransformLog,
 } from "./transform-log-types";
 
 export class Converter {
@@ -398,56 +398,56 @@ Science, 168(2):215–240, 1996.
     return transformElement;
   }
 
-  public static turingMachine2SymbolToMoveFirstTuringMachine<
+  public static turingMachine2SymbolToWriteFirstTuringMachine<
     S extends [...ComputationSystem[], TuringMachine],
     TransformLog extends unknown[] = []
   >(
     hierarchy: ITransformHierarchy<S, TransformLog>,
     firstSymbol: TMSymbol
   ): ITransformHierarchy<
-    [...S, MoveFirstTuringMachine],
-    [...TransformLog, TuringMachine2SymbolToMoveFirstTuringMachineTransformLog]
+    [...S, WriteFirstTuringMachine],
+    [...TransformLog, TuringMachine2SymbolToWriteFirstTuringMachineTransformLog]
   > {
-    let result = this._turingMachine2SymbolToMoveFirstTuringMachine(firstSymbol);
+    let result = this._turingMachine2SymbolToWriteFirstTuringMachine(firstSymbol);
 
     return hierarchy.appendLastAndNewHierarchy<
-      MoveFirstTuringMachine,
-      TuringMachine2SymbolToMoveFirstTuringMachineTransformLog
+      WriteFirstTuringMachine,
+      TuringMachine2SymbolToWriteFirstTuringMachineTransformLog
     >(result);
   }
 
-  public static turingMachine2SymbolToMoveFirstTuringMachineNew(
+  public static turingMachine2SymbolToWriteFirstTuringMachineNew(
     firstSymbol: TMSymbol
   ): ITransformHierarchy<
-    [TuringMachine, MoveFirstTuringMachine],
-    [TuringMachine2SymbolToMoveFirstTuringMachineTransformLog]
+    [TuringMachine, WriteFirstTuringMachine],
+    [TuringMachine2SymbolToWriteFirstTuringMachineTransformLog]
   > {
-    let result = this._turingMachine2SymbolToMoveFirstTuringMachine(firstSymbol);
+    let result = this._turingMachine2SymbolToWriteFirstTuringMachine(firstSymbol);
 
     return new TransformHierarchy<
-      [TuringMachine, MoveFirstTuringMachine],
-      [TuringMachine2SymbolToMoveFirstTuringMachineTransformLog]
+      [TuringMachine, WriteFirstTuringMachine],
+      [TuringMachine2SymbolToWriteFirstTuringMachineTransformLog]
     >([result]);
   }
 
-  private static _turingMachine2SymbolToMoveFirstTuringMachine(
+  private static _turingMachine2SymbolToWriteFirstTuringMachine(
     firstSymbol: TMSymbol
   ): ITransformElement<
     TuringMachine,
-    MoveFirstTuringMachine,
-    TuringMachine2SymbolToMoveFirstTuringMachineTransformLog
+    WriteFirstTuringMachine,
+    TuringMachine2SymbolToWriteFirstTuringMachineTransformLog
   > {
     const transformElement = new (class
       implements
         ITransformElement<
           TuringMachine,
-          MoveFirstTuringMachine,
-          TuringMachine2SymbolToMoveFirstTuringMachineTransformLog
+          WriteFirstTuringMachine,
+          TuringMachine2SymbolToWriteFirstTuringMachineTransformLog
         >
     {
-      private transformLog: TuringMachine2SymbolToMoveFirstTuringMachineTransformLog | null = null;
+      private transformLog: TuringMachine2SymbolToWriteFirstTuringMachineTransformLog | null = null;
 
-      getTransFormLog(): TuringMachine2SymbolToMoveFirstTuringMachineTransformLog | null {
+      getTransFormLog(): TuringMachine2SymbolToWriteFirstTuringMachineTransformLog | null {
         return this.transformLog;
       }
       asTuple(): {
@@ -455,16 +455,16 @@ Science, 168(2):215–240, 1996.
         symbolSet: Set<TMSymbol>;
         blankSymbol: TMSymbol;
         inputSymbolSet: Set<TMSymbol>;
-        ruleset: MoveFirstTMRuleSet;
+        ruleset: WriteFirstTMRuleSet;
         initState: TMState;
         acceptState: TMState | null;
       } | null {
         return this.tmSample === null ? null : this.tmSample.asTuple();
       }
-      asIndependantSystem(): MoveFirstTuringMachine | null {
+      asIndependantSystem(): WriteFirstTuringMachine | null {
         return this.tmSample === null ? null : this.tmSample.clone();
       }
-      tmSample: MoveFirstTuringMachine | null = null;
+      tmSample: WriteFirstTuringMachine | null = null;
 
       interpretConfigration(real: TMConfiguration | null): TMConfiguration | null {
         return real;
@@ -517,10 +517,10 @@ Science, 168(2):215–240, 1996.
             read: TMSymbol;
             out: TMRuleOutput;
           };
-          transformedRule: MoveFirstTMRule;
+          transformedRule: WriteFirstTMRule;
         }[] = [];
 
-        const ruleSetBuilder = MoveFirstTMRuleSet.builder();
+        const ruleSetBuilder = WriteFirstTMRuleSet.builder();
         states.forEach((state) => {
           symbols.forEach((symbol) => {
             const candinates = system.ruleset.getCandinates(state, symbol);
@@ -563,7 +563,7 @@ Science, 168(2):215–240, 1996.
 
         const firstState = concatStrAndNew(system.initState, firstSymbol);
 
-        this.tmSample = new MoveFirstTuringMachine(
+        this.tmSample = new WriteFirstTuringMachine(
           system.blankSymbol,
           ruleSetBuilder.build(),
           firstState,
@@ -581,52 +581,52 @@ Science, 168(2):215–240, 1996.
     return transformElement;
   }
 
-  public static moveFirstTM2SymbolToTagSystem<
-    S extends [...ComputationSystem[], MoveFirstTuringMachine],
+  public static WriteFirstTM2SymbolToTagSystem<
+    S extends [...ComputationSystem[], WriteFirstTuringMachine],
     T extends unknown[]
   >(
     hierarchy: ITransformHierarchy<S, T>
-  ): ITransformHierarchy<[...S, TagSystem], [...T, MoveFirstTM2SymbolToTagSystemTransformLog]> {
-    let result = this._moveFirstTM2SymbolToTagSystem();
+  ): ITransformHierarchy<[...S, TagSystem], [...T, WriteFirstTM2SymbolToTagSystemTransformLog]> {
+    let result = this._WriteFirstTM2SymbolToTagSystem();
 
     return hierarchy.appendLastAndNewHierarchy<
       TagSystem,
-      MoveFirstTM2SymbolToTagSystemTransformLog
+      WriteFirstTM2SymbolToTagSystemTransformLog
     >(result);
   }
 
-  public static moveFirstTM2SymbolToTagSystemNew(): ITransformHierarchy<
-    [MoveFirstTuringMachine, TagSystem],
-    [MoveFirstTM2SymbolToTagSystemTransformLog]
+  public static WriteFirstTM2SymbolToTagSystemNew(): ITransformHierarchy<
+    [WriteFirstTuringMachine, TagSystem],
+    [WriteFirstTM2SymbolToTagSystemTransformLog]
   > {
-    let result = this._moveFirstTM2SymbolToTagSystem();
+    let result = this._WriteFirstTM2SymbolToTagSystem();
 
     return new TransformHierarchy<
-      [MoveFirstTuringMachine, TagSystem],
-      [MoveFirstTM2SymbolToTagSystemTransformLog]
+      [WriteFirstTuringMachine, TagSystem],
+      [WriteFirstTM2SymbolToTagSystemTransformLog]
     >([result]);
   }
 
   /**
    * @see COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.
    */
-  private static _moveFirstTM2SymbolToTagSystem(): ITransformElement<
-    MoveFirstTuringMachine,
+  private static _WriteFirstTM2SymbolToTagSystem(): ITransformElement<
+    WriteFirstTuringMachine,
     TagSystem,
-    MoveFirstTM2SymbolToTagSystemTransformLog
+    WriteFirstTM2SymbolToTagSystemTransformLog
   > {
     return new (class
       implements
         ITransformElement<
-          MoveFirstTuringMachine,
+          WriteFirstTuringMachine,
           TagSystem,
-          MoveFirstTM2SymbolToTagSystemTransformLog
+          WriteFirstTM2SymbolToTagSystemTransformLog
         >
     {
       tagSystemSample: TagSystem | null = null;
-      transformLog: MoveFirstTM2SymbolToTagSystemTransformLog | null = null;
+      transformLog: WriteFirstTM2SymbolToTagSystemTransformLog | null = null;
 
-      getTransFormLog(): MoveFirstTM2SymbolToTagSystemTransformLog | null {
+      getTransFormLog(): WriteFirstTM2SymbolToTagSystemTransformLog | null {
         return this.transformLog;
       }
       interpretConfigration(real: TagSystemConfiguration | null): TMConfiguration | null {
@@ -739,7 +739,7 @@ Science, 168(2):215–240, 1996.
         symbolSet: Set<TMSymbol>;
         blankSymbol: TMSymbol;
         inputSymbolSet: Set<TMSymbol>;
-        ruleset: MoveFirstTMRuleSet;
+        ruleset: WriteFirstTMRuleSet;
         initState: TMState;
         acceptState: TMState | null;
       }): void {

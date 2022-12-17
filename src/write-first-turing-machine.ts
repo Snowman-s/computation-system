@@ -7,7 +7,7 @@ import {
   TMTape,
 } from "./computation-system";
 
-export type MoveFirstTMRuleOutput = {
+export type WriteFirstTMRuleOutput = {
   readonly write: TMSymbol;
   readonly move: TMMove;
   readonly changeStates: readonly {
@@ -16,27 +16,27 @@ export type MoveFirstTMRuleOutput = {
   }[];
 };
 
-export type MoveFirstTMRule = {
+export type WriteFirstTMRule = {
   readonly nowState: TMState;
-  readonly out: MoveFirstTMRuleOutput;
+  readonly out: WriteFirstTMRuleOutput;
 };
 
 /**
  * The Move-First Turing Machine's program.
  *
  * @remarks
- * You should use {@link MoveFirstTMRuleSet.builder} to construct this.
+ * You should use {@link WriteFirstTMRuleSet.builder} to construct this.
  */
-export class MoveFirstTMRuleSet {
+export class WriteFirstTMRuleSet {
   /**
    * Create builder for TMRuleSet.
    * @returns created builder
    */
   public static builder() {
-    return new MoveFirstTMRuleSetBuilder();
+    return new WriteFirstTMRuleSetBuilder();
   }
 
-  private readonly rules: MoveFirstTMRule[] = [];
+  private readonly rules: WriteFirstTMRule[] = [];
 
   /**
    * Construct TMRuleset with given rules.
@@ -47,7 +47,7 @@ export class MoveFirstTMRuleSet {
    *
    * @param rules list of rule
    */
-  constructor(rules: MoveFirstTMRule[]) {
+  constructor(rules: WriteFirstTMRule[]) {
     this.rules = [...rules];
   }
 
@@ -130,9 +130,9 @@ export class MoveFirstTMRuleSet {
 
 /**
  * A builder to build the Move-First Turing Machine's ruleset.
- * @see {@link MoveFirstTMRuleSet}
+ * @see {@link WriteFirstTMRuleSet}
  */
-export class MoveFirstTMRuleSetBuilder {
+export class WriteFirstTMRuleSetBuilder {
   private nowBuildingInfo: { nowState: TMState; write: TMSymbol; move: TMMove } | null = null;
   private rules: {
     nowState: TMState;
@@ -149,7 +149,7 @@ export class MoveFirstTMRuleSetBuilder {
   /**
    * Sets which states the rules to be added are related to.
    *
-   * @see {@link MoveFirstTMRuleSetBuilder.add}
+   * @see {@link WriteFirstTMRuleSetBuilder.add}
    *
    * @param state The state the rules to be added are related to.
    * @returns This builder, to method chains.
@@ -271,16 +271,16 @@ export class MoveFirstTMRuleSetBuilder {
    * @returns Created rule-set.
    */
   public build() {
-    return new MoveFirstTMRuleSet(this.rules);
+    return new WriteFirstTMRuleSet(this.rules);
   }
 }
 
 /**
  * A object for simulate the turing machine, but the machine's head will move before read the tape.
  */
-export class MoveFirstTuringMachine implements ComputationSystem {
+export class WriteFirstTuringMachine implements ComputationSystem {
   private readonly blank: TMSymbol;
-  private readonly ruleset: MoveFirstTMRuleSet;
+  private readonly ruleset: WriteFirstTMRuleSet;
   private readonly initState: TMState;
   private readonly acceptState: TMState | null;
 
@@ -301,7 +301,7 @@ export class MoveFirstTuringMachine implements ComputationSystem {
    */
   constructor(
     blank: TMSymbol,
-    ruleset: MoveFirstTMRuleSet,
+    ruleset: WriteFirstTMRuleSet,
     initState: TMState,
     acceptState: TMState | null = null
   ) {
@@ -313,7 +313,7 @@ export class MoveFirstTuringMachine implements ComputationSystem {
 
   /**
    * Get the word when this machine starts the process.
-   * @returns Returns the initial-word if {@link MoveFirstTuringMachine.start} was called, If not, return null.
+   * @returns Returns the initial-word if {@link WriteFirstTuringMachine.start} was called, If not, return null.
    */
   public getInitialWord(): TMSymbol[] | null {
     return this.initialWord;
@@ -485,8 +485,8 @@ export class MoveFirstTuringMachine implements ComputationSystem {
     }
   }
 
-  public clone(): MoveFirstTuringMachine {
-    return new MoveFirstTuringMachine(this.blank, this.ruleset, this.initState, this.acceptState);
+  public clone(): WriteFirstTuringMachine {
+    return new WriteFirstTuringMachine(this.blank, this.ruleset, this.initState, this.acceptState);
   }
 
   /**

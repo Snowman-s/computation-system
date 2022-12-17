@@ -1,7 +1,7 @@
 export * from "./turing-machine";
 export * from "./tag-system";
 export * from "./converter";
-export * from "./move-first-turing-machine";
+export * from "./write-first-turing-machine";
 
 export interface ComputationSystem {
   getConfiguration(): unknown;

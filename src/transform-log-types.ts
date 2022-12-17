@@ -1,5 +1,5 @@
 import {
-  MoveFirstTMRule,
+  WriteFirstTMRule,
   TagSystemLetter,
   TagSystemWord,
   TMRuleOutput,
@@ -15,7 +15,7 @@ export type Tag2SystemToTuringMachine218TransformLog = {
   readonly outRepresent: TMSymbol[];
 }[];
 
-export type TuringMachine2SymbolToMoveFirstTuringMachineTransformLog = {
+export type TuringMachine2SymbolToWriteFirstTuringMachineTransformLog = {
   readonly symbol0: TMSymbol;
   readonly symbol1: TMSymbol;
 
@@ -25,11 +25,11 @@ export type TuringMachine2SymbolToMoveFirstTuringMachineTransformLog = {
       readonly read: TMSymbol;
       readonly out: TMRuleOutput;
     };
-    readonly transformedRule: MoveFirstTMRule;
+    readonly transformedRule: WriteFirstTMRule;
   }[];
 };
 
-export type MoveFirstTM2SymbolToTagSystemTransformLog = {
+export type WriteFirstTM2SymbolToTagSystemTransformLog = {
   letterX: TagSystemLetter;
   symbol0: TMSymbol;
   symbol1: TMSymbol;
