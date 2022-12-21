@@ -34,42 +34,9 @@ export class Converter {
   private constructor() {}
 
   /**
-   * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
-Science, 168(2):215–240, 1996.
+   * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer Science, 168(2):215–240, 1996.
    */
-  public static tag2SystemToTuringMachine218<
-    S extends [...ComputationSystem[], TagSystem] = [TagSystem],
-    TransformLog extends unknown[] = []
-  >(
-    hierarchy: ITransformHierarchy<S, TransformLog>
-  ): ITransformHierarchy<
-    [...S, TuringMachine],
-    [...TransformLog, Tag2SystemToTuringMachine218TransformLog]
-  > {
-    let result = this._tag2SystemToTuringMachine218();
-
-    return hierarchy.appendLastAndNewHierarchy<
-      TuringMachine,
-      Tag2SystemToTuringMachine218TransformLog
-    >(result);
-  }
-  /**
- * @see Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
-Science, 168(2):215–240, 1996.
- */
-  public static tag2SystemToTuringMachine218New(): ITransformHierarchy<
-    [TagSystem, TuringMachine],
-    [Tag2SystemToTuringMachine218TransformLog]
-  > {
-    let result = this._tag2SystemToTuringMachine218();
-
-    return new TransformHierarchy<
-      [TagSystem, TuringMachine],
-      [Tag2SystemToTuringMachine218TransformLog]
-    >([result]);
-  }
-
-  private static _tag2SystemToTuringMachine218(): ITransformElement<
+  public static tag2SystemToTuringMachine218(): ITransformElement<
     TagSystem,
     TuringMachine,
     Tag2SystemToTuringMachine218TransformLog
@@ -398,39 +365,7 @@ Science, 168(2):215–240, 1996.
     return transformElement;
   }
 
-  public static turingMachine2SymbolToWriteFirstTuringMachine<
-    S extends [...ComputationSystem[], TuringMachine],
-    TransformLog extends unknown[] = []
-  >(
-    hierarchy: ITransformHierarchy<S, TransformLog>,
-    firstSymbol: TMSymbol
-  ): ITransformHierarchy<
-    [...S, WriteFirstTuringMachine],
-    [...TransformLog, TuringMachine2SymbolToWriteFirstTuringMachineTransformLog]
-  > {
-    let result = this._turingMachine2SymbolToWriteFirstTuringMachine(firstSymbol);
-
-    return hierarchy.appendLastAndNewHierarchy<
-      WriteFirstTuringMachine,
-      TuringMachine2SymbolToWriteFirstTuringMachineTransformLog
-    >(result);
-  }
-
-  public static turingMachine2SymbolToWriteFirstTuringMachineNew(
-    firstSymbol: TMSymbol
-  ): ITransformHierarchy<
-    [TuringMachine, WriteFirstTuringMachine],
-    [TuringMachine2SymbolToWriteFirstTuringMachineTransformLog]
-  > {
-    let result = this._turingMachine2SymbolToWriteFirstTuringMachine(firstSymbol);
-
-    return new TransformHierarchy<
-      [TuringMachine, WriteFirstTuringMachine],
-      [TuringMachine2SymbolToWriteFirstTuringMachineTransformLog]
-    >([result]);
-  }
-
-  private static _turingMachine2SymbolToWriteFirstTuringMachine(
+  public static turingMachine2SymbolToWriteFirstTuringMachine(
     firstSymbol: TMSymbol
   ): ITransformElement<
     TuringMachine,
@@ -581,36 +516,10 @@ Science, 168(2):215–240, 1996.
     return transformElement;
   }
 
-  public static WriteFirstTM2SymbolToTagSystem<
-    S extends [...ComputationSystem[], WriteFirstTuringMachine],
-    T extends unknown[]
-  >(
-    hierarchy: ITransformHierarchy<S, T>
-  ): ITransformHierarchy<[...S, TagSystem], [...T, WriteFirstTM2SymbolToTagSystemTransformLog]> {
-    let result = this._WriteFirstTM2SymbolToTagSystem();
-
-    return hierarchy.appendLastAndNewHierarchy<
-      TagSystem,
-      WriteFirstTM2SymbolToTagSystemTransformLog
-    >(result);
-  }
-
-  public static WriteFirstTM2SymbolToTagSystemNew(): ITransformHierarchy<
-    [WriteFirstTuringMachine, TagSystem],
-    [WriteFirstTM2SymbolToTagSystemTransformLog]
-  > {
-    let result = this._WriteFirstTM2SymbolToTagSystem();
-
-    return new TransformHierarchy<
-      [WriteFirstTuringMachine, TagSystem],
-      [WriteFirstTM2SymbolToTagSystemTransformLog]
-    >([result]);
-  }
-
   /**
    * @see COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.
    */
-  private static _WriteFirstTM2SymbolToTagSystem(): ITransformElement<
+  public static writeFirstTM2SymbolToTagSystem(): ITransformElement<
     WriteFirstTuringMachine,
     TagSystem,
     WriteFirstTM2SymbolToTagSystemTransformLog
@@ -979,6 +888,24 @@ export type Remove2<T extends unknown[]> = T extends [infer _, infer _, ...infer
 export type Remove1<T extends unknown[]> = T extends [infer _, ...infer Rests] ? Rests : unknown[];
 export type FirstOf<T extends unknown[]> = T extends [infer F, ...infer _] ? F : T[0];
 export type LastOf<T extends unknown[]> = T extends [...infer _, infer Last] ? Last : T[0];
+
+export type HierarchyElementAsTransformLog<
+  InitElement extends ITransformElement<ComputationSystem, ComputationSystem, unknown>
+> = InitElement extends ITransformElement<infer _, infer _, infer TransformLog>
+  ? [TransformLog]
+  : never;
+
+export function createHierarchy<
+  Take extends ComputationSystem,
+  As extends ComputationSystem,
+  TransformLog
+>(
+  initWith: ITransformElement<Take, As, TransformLog>
+): ITransformHierarchy<[Take, As], [TransformLog]> {
+  return new TransformHierarchy<[Take, As], [TransformLog]>([
+    initWith,
+  ] as SystemsAsHierarchyElements<[Take, As], [TransformLog]>);
+}
 
 export interface ITransformHierarchy<
   S extends ComputationSystem[],

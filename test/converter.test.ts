@@ -14,8 +14,9 @@ import {
   WriteFirstTMRuleSet,
   WriteFirstTuringMachine,
   ITransformHierarchy,
+  createHierarchy,
+  WriteFirstTM2SymbolToTagSystemTransformLog,
 } from "../src/computation-system";
-import { WriteFirstTM2SymbolToTagSystemTransformLog } from "../src/transform-log-types";
 
 describe("ConverterTest", () => {
   it("TagSystem2TuringMachine", () => {
@@ -28,7 +29,7 @@ describe("ConverterTest", () => {
       .build();
     const tagSystem = new TagSystem(2, tagSystemRuleSet);
 
-    const transformHierarchy = Converter.tag2SystemToTuringMachine218New();
+    const transformHierarchy = createHierarchy(Converter.tag2SystemToTuringMachine218());
 
     transformHierarchy.start(tagSystem, [[A, B, B]]);
 
@@ -90,7 +91,7 @@ describe("ConverterTest", () => {
     const tagSystem = new TagSystem(10, tagSystemRuleSet);
     const validTagSystem = new TagSystem(2, tagSystemRuleSet);
 
-    const transformHierarchy = Converter.tag2SystemToTuringMachine218New();
+    const transformHierarchy = createHierarchy(Converter.tag2SystemToTuringMachine218());
 
     expect(() => transformHierarchy.start(tagSystem, [[A, B, B]])).toThrowError();
 
@@ -119,7 +120,7 @@ describe("ConverterTest", () => {
 
     let tm = new TuringMachine(A, ruleset, q1, qf);
 
-    const hierarchy = Converter.turingMachine2SymbolToWriteFirstTuringMachineNew(A);
+    const hierarchy = createHierarchy(Converter.turingMachine2SymbolToWriteFirstTuringMachine(A));
     hierarchy.start(tm, [[A, A, B, B], 0]);
 
     expect(hierarchy.getConfiguration(1)?.tape.toString()).toBe("…AAABBA…");
@@ -156,7 +157,7 @@ describe("ConverterTest", () => {
       .build();
     let validTM = new TuringMachine(A, validRuleset, q1, qf);
 
-    const hierarchy = Converter.turingMachine2SymbolToWriteFirstTuringMachineNew(A);
+    const hierarchy = createHierarchy(Converter.turingMachine2SymbolToWriteFirstTuringMachine(A));
     expect(() => hierarchy.start(invalidTM, [[A, A, B, B], 0])).toThrowError();
 
     expect(hierarchy.getConfiguration(1)).toBeNull();
@@ -184,7 +185,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, ruleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       hierarchy.start(tm, [[A, B, B], 0]);
 
@@ -226,7 +227,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(B, ruleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       hierarchy.start(tm, [[A, B, B], 0]);
 
@@ -257,7 +258,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, ruleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       hierarchy.start(tm, [[A, B, A, B, B], 2]);
       const tmtapeBeforeExecuted = hierarchy.getConfiguration(0)?.tape;
@@ -290,7 +291,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, ruleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
     });
@@ -315,7 +316,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, ruleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
     });
@@ -336,7 +337,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, rulesetWithoutA, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
 
@@ -373,7 +374,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, ruleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
     });
@@ -382,7 +383,7 @@ describe("ConverterTest", () => {
         [WriteFirstTuringMachine, TagSystem],
         [WriteFirstTM2SymbolToTagSystemTransformLog]
       >;
-      hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
       expect(hierarchy.getTuple(0)).toBeNull();
       expect(hierarchy.getTuple(1)).toBeNull();
       expect(hierarchy.asIndependantSystem(0)).toBeNull();
@@ -398,7 +399,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, ruleset, q1, q2);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
     });
@@ -420,7 +421,7 @@ describe("ConverterTest", () => {
 
       let tm = new WriteFirstTuringMachine(A, errorRuleset, q1, qf);
 
-      let hierarchy = Converter.WriteFirstTM2SymbolToTagSystemNew();
+      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       expect(() => hierarchy.start(tm, [[A, B, B], 0])).toThrowError();
     });

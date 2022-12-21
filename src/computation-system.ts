@@ -2,6 +2,7 @@ export * from "./turing-machine";
 export * from "./tag-system";
 export * from "./converter";
 export * from "./write-first-turing-machine";
+export * from "./transform-log-types";
 
 export interface ComputationSystem {
   getConfiguration(): unknown;
