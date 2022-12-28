@@ -19,6 +19,46 @@ import {
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
+  describe("2 or more elements", () => {
+    test("positive", () => {
+      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+      let ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "L", q2)
+        .state(q2)
+        .add(A, B, "R", qf)
+        .add(B, B, "R", qf)
+        .build();
+
+      const hierarchy = createHierarchy(
+        Converter.turingMachine2SymbolToWriteFirstTuringMachine(A)
+      ).appendLastAndNewHierarchy(Converter.writeFirstTM2SymbolToTagSystem(true));
+
+      hierarchy.start(new TuringMachine(B, ruleset, q1, qf), [[A, B], 0]);
+      const tmConfigBeforeExecute = hierarchy.getConfiguration(0)!;
+      const writeTmConfigBeforeExecute = hierarchy.getConfiguration(1)!;
+      const tsConfigBeforeExecute = hierarchy.getConfiguration(2)!;
+
+      expect(writeTmConfigBeforeExecute.tape.toString()).toBe("");
+      expect(tmConfigBeforeExecute.tape.toString()).toBe("");
+      expect(tsConfigBeforeExecute.word.toString()).toBe("");
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(10);
+      }
+
+      const tmConfig = hierarchy.getConfiguration(0)!;
+      const writeTmConfig = hierarchy.getConfiguration(1)!;
+      const tsConfig = hierarchy.getConfiguration(2)!;
+
+      expect(tsConfig.word.toString()).toBe("");
+      expect(writeTmConfig.tape.toString()).toBe("");
+      expect(tmConfig.tape.toString()).toBe("");
+    });
+  });
+
   it("TagSystem2TuringMachine", () => {
     const [A, B, H] = TagSystemLetterFrom("A", "B", "H");
 
@@ -167,7 +207,7 @@ describe("ConverterTest", () => {
     expect(hierarchy.getTuple(1)).not.toBeNull();
   });
   describe("WriteFirstTM2SymbolToTagSystem", () => {
-    test("Normal", () => {
+    test("Positive", () => {
       let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
       let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
@@ -194,9 +234,9 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_3xα_3xα_3xα_3xB_3x");
+      expect(word?.toString()).toEqual("A_3x" + "α_3x".repeat(3) + "B_3x" + "β_3x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
-      expect(tmtape?.toString()).toMatch(/…ABB.AA…/);
+      expect(tmtape?.toString()).toMatch(/…A+BBBA+…/);
 
       const initStateTransformData = hierarchy
         .getTransFormLogOf(0)

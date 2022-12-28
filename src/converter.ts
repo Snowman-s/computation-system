@@ -20,6 +20,7 @@ import {
 import {
   ComputationSystem,
   WriteFirstTMRule,
+  WriteFirstTMRuleOutput,
   WriteFirstTMRuleSet,
   WriteFirstTuringMachine,
 } from "./computation-system";
@@ -519,7 +520,9 @@ export class Converter {
   /**
    * @see COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.
    */
-  public static writeFirstTM2SymbolToTagSystem(): ITransformElement<
+  public static writeFirstTM2SymbolToTagSystem(
+    fillRulesAsPossible = false
+  ): ITransformElement<
     WriteFirstTuringMachine,
     TagSystem,
     WriteFirstTM2SymbolToTagSystemTransformLog
@@ -683,12 +686,36 @@ export class Converter {
         const lettersPool: TagSystemLetter[] = [];
 
         states.forEach((state, index) => {
-          const tmoutCandinates = ruleset.getCandinates(state);
-          if (state !== acceptState && tmoutCandinates.length == 0) throw new Error();
-          if (tmoutCandinates.length > 1) {
-            throw new Error();
-          }
-          const tmout = tmoutCandinates[0];
+          const tmout = (function () {
+            const tmoutCandinates = ruleset.getCandinates(state);
+
+            if (state !== acceptState && tmoutCandinates.length == 0) {
+              if (!fillRulesAsPossible) throw new Error();
+
+              const ret: WriteFirstTMRuleOutput = {
+                write: symbol0,
+                move: "L",
+                changeStates: [
+                  {
+                    read: symbol0,
+                    thenGoTo: state,
+                  },
+                  {
+                    read: symbol1,
+                    thenGoTo: state,
+                  },
+                ],
+              };
+
+              return ret;
+            }
+
+            if (tmoutCandinates.length > 1) {
+              throw new Error();
+            }
+
+            return tmoutCandinates[0];
+          })();
 
           const toLetter = function (char: string, appendSymbol?: 0 | 1, d?: "'") {
             const appendStr = (function () {
