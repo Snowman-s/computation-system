@@ -164,11 +164,11 @@ describe("WriteFirstTuringMachine", function () {
       .add(Blank, qf)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1, qf);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
     //スタート前
     expect(() => tm.proceed()).toThrowError();
 
-    tm.start([[A, A, B, B], 0]);
+    tm.start([[A, A, B, B], 0, q1]);
 
     tm.proceed(5);
 
@@ -201,8 +201,8 @@ describe("WriteFirstTuringMachine", function () {
       .addHALT(Blank)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1);
-    tm.start([[A, A, B, B], 0]);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset);
+    tm.start([[A, A, B, B], 0, q1]);
 
     tm.proceed(3);
     expect(tm.isHalted()).toEqual(false);
@@ -219,8 +219,8 @@ describe("WriteFirstTuringMachine", function () {
     let [q1]: TMState[] = TMStateFrom("q1");
     let ruleset = WriteFirstTMRuleSet.builder().state(q1, Blank, "R").addHALT(Blank).build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1);
-    tm.start([[], 0]);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset);
+    tm.start([[], 0, q1]);
 
     expect(() => tm.proceed()).not.toThrowError();
     expect(tm.isHalted()).toBe(true);
@@ -230,12 +230,11 @@ describe("WriteFirstTuringMachine", function () {
     let [q1, qf]: TMState[] = TMStateFrom("q1", "qf");
     let ruleset = WriteFirstTMRuleSet.builder().state(q1, A, "R").add(B, q1).build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1, qf);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
 
     const tuple = tm.asTuple();
     expect(tuple.acceptState).toEqual(qf);
     expect(tuple.blankSymbol).toEqual(Blank);
-    expect(tuple.initState).toEqual(q1);
     expect(tuple.inputSymbolSet).toContain(A);
     expect(tuple.inputSymbolSet).toContain(B);
     expect(tuple.inputSymbolSet).toContain(Blank);
@@ -259,13 +258,13 @@ describe("WriteFirstTuringMachine", function () {
       .add(Blank, qf)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1, qf);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
     //スタート前
     expect(() => tm.proceed()).toThrowError();
     const beforeConfig = tm.getConfiguration();
     expect(beforeConfig).toBeNull();
 
-    tm.start([[A, A, B, B], 0]);
+    tm.start([[A, A, B, B], 0, q1]);
 
     tm.proceed(3);
 
@@ -295,8 +294,8 @@ describe("WriteFirstTuringMachine", function () {
       .add(A, q2)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1);
-    tm.start([[A, A, B], 0]);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset);
+    tm.start([[A, A, B], 0, q1]);
 
     expect(() => tm.proceed(-1)).toThrowError();
 
@@ -305,18 +304,18 @@ describe("WriteFirstTuringMachine", function () {
     //複数候補
     expect(() => tm.proceed()).toThrowError();
 
-    tm.start([[Blank, A, D], 0]);
+    tm.start([[Blank, A, D], 0, q1]);
     expect(() => tm.proceed()).not.toThrowError();
     //候補なし
     expect(() => tm.proceed()).toThrowError();
 
-    let tm2 = new WriteFirstTuringMachine(Blank, ruleset, q2);
-    tm2.start([[A, B], 0]);
+    let tm2 = new WriteFirstTuringMachine(Blank, ruleset);
+    tm2.start([[A, B], 0, q2]);
     //複数候補(2)
     expect(() => tm2.proceed()).toThrowError();
 
-    let tm3 = new WriteFirstTuringMachine(Blank, ruleset, q3);
-    tm3.start([[], 0]);
+    let tm3 = new WriteFirstTuringMachine(Blank, ruleset);
+    tm3.start([[], 0, q3]);
     //候補なし(2)
     expect(() => tm3.proceed()).toThrowError();
   });
@@ -333,7 +332,7 @@ describe("WriteFirstTuringMachine", function () {
       .add(Blank, qf)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, q1, qf);
+    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
     expect(tm.clone().asTuple()).toEqual(tm.asTuple());
   });
 });

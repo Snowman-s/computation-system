@@ -18,6 +18,15 @@ export type Tag2SystemToTuringMachine218TransformLog = {
 export type TuringMachine2SymbolToWriteFirstTuringMachineTransformLog = {
   readonly symbol0: TMSymbol;
   readonly symbol1: TMSymbol;
+  readonly initStateCandinates: readonly {
+    readonly firstSymbol: TMSymbol;
+    readonly state: TMState;
+  }[];
+
+  readonly stateCorrespondenceTable: readonly {
+    readonly tmState: TMState;
+    readonly writeTMState: TMState;
+  }[];
 
   readonly ruleTable: {
     readonly originalRule: {
@@ -33,9 +42,9 @@ export type WriteFirstTM2SymbolToTagSystemTransformLog = {
   letterX: TagSystemLetter;
   symbol0: TMSymbol;
   symbol1: TMSymbol;
-  initState: TMState;
   symbolCorrespondenceTable: {
     state: TMState;
+    whichSymbolReadBefore: TMSymbol;
     A: TagSystemLetter;
     B: TagSystemLetter;
     alpha: TagSystemLetter;

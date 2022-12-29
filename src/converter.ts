@@ -366,9 +366,7 @@ export class Converter {
     return transformElement;
   }
 
-  public static turingMachine2SymbolToWriteFirstTuringMachine(
-    firstSymbol: TMSymbol
-  ): ITransformElement<
+  public static turingMachine2SymbolToWriteFirstTuringMachine(): ITransformElement<
     TuringMachine,
     WriteFirstTuringMachine,
     TuringMachine2SymbolToWriteFirstTuringMachineTransformLog
@@ -392,7 +390,6 @@ export class Converter {
         blankSymbol: TMSymbol;
         inputSymbolSet: Set<TMSymbol>;
         ruleset: WriteFirstTMRuleSet;
-        initState: TMState;
         acceptState: TMState | null;
       } | null {
         return this.tmSample === null ? null : this.tmSample.asTuple();
@@ -403,12 +400,28 @@ export class Converter {
       tmSample: WriteFirstTuringMachine | null = null;
 
       interpretConfigration(real: TMConfiguration | null): TMConfiguration | null {
-        return real;
+        if (real === null) return null;
+        if (this.transformLog === null) return null;
+
+        const state = this.transformLog.stateCorrespondenceTable.filter(
+          (elm) => elm.writeTMState === real.nowState
+        )[0].tmState;
+
+        return { nowState: state, tape: real.tape, headPosition: real.headPosition };
       }
+
       interpretInput(
         virtual: [word: TMSymbol[], headPosition: number]
-      ): [word: TMSymbol[], headPosition: number] {
-        return virtual;
+      ): [word: TMSymbol[], headPosition: number, state: TMState] {
+        if (this.transformLog === null) throw new Error();
+
+        const firstStateCandinates = this.transformLog.initStateCandinates.filter(
+          (elm) => elm.firstSymbol == virtual[0][virtual[1]]
+        );
+
+        if (firstStateCandinates.length !== 1) throw new Error();
+
+        return [virtual[0], virtual[1], firstStateCandinates[0].state];
       }
       bind(system: {
         stateSet: Set<TMState>;
@@ -497,18 +510,25 @@ export class Converter {
           });
         });
 
-        const firstState = concatStrAndNew(system.initState, firstSymbol);
-
         this.tmSample = new WriteFirstTuringMachine(
           system.blankSymbol,
           ruleSetBuilder.build(),
-          firstState,
           acceptStateCopy
         );
 
         this.transformLog = {
           symbol0: symbols[0],
           symbol1: symbols[1],
+          initStateCandinates: symbols.map((symbol) => {
+            return {
+              firstSymbol: symbol,
+              state: concatStrAndNew(system.initState, symbol),
+            };
+          }),
+          stateCorrespondenceTable: newStatePool.map((elm) => {
+            const [state, _, created] = elm;
+            return { tmState: state, writeTMState: created };
+          }),
           ruleTable: transformTable,
         };
       }
@@ -600,7 +620,9 @@ export class Converter {
           .map((t) => (t === "0" ? symbol0 : symbol1));
 
         const tape = TMTape.create(
-          leftToSymbols.concat([{ value: "*", meaning: "symbol" }]).concat(rightToSymbols),
+          leftToSymbols
+            .concat([useLetterSet.whichSymbolReadBefore ?? { meaning: "symbol", value: "*" }])
+            .concat(rightToSymbols),
           this.transformLog.symbol0
         ).locked();
 
@@ -612,12 +634,12 @@ export class Converter {
       }
 
       interpretInput(
-        virtual: [word: TMSymbol[], headPosition: number]
+        virtual: [word: TMSymbol[], headPosition: number, state: TMState]
       ): [letters: TagSystemLetter[]] {
         if (this.transformLog === null) throw new Error();
 
-        const [word, headPosition] = virtual;
-        const { letterX, symbol0, initState, symbolCorrespondenceTable } = {
+        const [word, headPosition, state] = virtual;
+        const { letterX, symbol0, symbolCorrespondenceTable } = {
           ...this.transformLog,
         };
 
@@ -635,13 +657,19 @@ export class Converter {
           })
           .reduce((a, b) => a + b, 0);
 
-        const usingLetters = symbolCorrespondenceTable.find((value) => value.state === initState);
-        if (usingLetters === undefined) throw new Error();
+        const nowHeadSymbol = word[headPosition];
+        const usingLetters = symbolCorrespondenceTable.filter(
+          (value) => value.state === state && value.whichSymbolReadBefore === nowHeadSymbol
+        );
+        if (usingLetters.length === 0)
+          throw new Error(`state "${state}", was not passed to bind().`);
 
-        const ret = [usingLetters.A, letterX]
-          .concat(new Array(leftNum).fill([usingLetters.alpha, letterX]).flat())
-          .concat([usingLetters.B, letterX])
-          .concat(new Array(rightNum).fill([usingLetters.beta, letterX]).flat());
+        const usingLetter = usingLetters[0];
+
+        const ret = [usingLetter.A, letterX]
+          .concat(new Array(leftNum).fill([usingLetter.alpha, letterX]).flat())
+          .concat([usingLetter.B, letterX])
+          .concat(new Array(rightNum).fill([usingLetter.beta, letterX]).flat());
 
         return [ret];
       }
@@ -652,10 +680,9 @@ export class Converter {
         blankSymbol: TMSymbol;
         inputSymbolSet: Set<TMSymbol>;
         ruleset: WriteFirstTMRuleSet;
-        initState: TMState;
         acceptState: TMState | null;
       }): void {
-        const { stateSet, symbolSet, blankSymbol, ruleset, initState, acceptState } = system;
+        const { stateSet, symbolSet, blankSymbol, ruleset, acceptState } = system;
 
         const [symbol0, symbol1]: TMSymbol[] = (function () {
           if (symbolSet.size !== 2) {
@@ -675,15 +702,12 @@ export class Converter {
         const [X] = TagSystemLetterFrom("x");
         const ruleSetBuilder = TagSystemRuleSet.builder().add(X, [X]);
 
-        const symbolCorrespondenceTable: {
-          state: TMState;
-          A: TagSystemLetter;
-          B: TagSystemLetter;
-          alpha: TagSystemLetter;
-          beta: TagSystemLetter;
-        }[] = [];
+        const symbolCorrespondenceTable: WriteFirstTM2SymbolToTagSystemTransformLog["symbolCorrespondenceTable"] =
+          [];
 
         const lettersPool: TagSystemLetter[] = [];
+
+        const mustSetLastReadIndicatorLetterSet = ["A"];
 
         states.forEach((state, index) => {
           const tmout = (function () {
@@ -708,23 +732,23 @@ export class Converter {
               };
 
               return ret;
-            }
-
-            if (tmoutCandinates.length > 1) {
+            } else if (tmoutCandinates.length > 1) {
               throw new Error();
             }
 
             return tmoutCandinates[0];
           })();
 
+          // 現在の状態からappendSymbolに移った時どうなるか
           const toLetter = function (char: string, appendSymbol?: 0 | 1, d?: "'") {
             const appendStr = (function () {
               if (appendSymbol === undefined) return index.toString(10);
 
-              if (
+              const merge =
                 (d !== "'" && ["A", "α", "B", "β"].findIndex((c) => c === char) !== -1) ||
-                (d === "'" && ["B", "β"].findIndex((c) => c === char) !== -1)
-              ) {
+                (d === "'" && ["B", "β"].findIndex((c) => c === char) !== -1);
+
+              if (merge) {
                 const symbolI0s = tmout.changeStates.filter(
                   (changeState) => changeState.read === symbol0
                 );
@@ -746,9 +770,12 @@ export class Converter {
                   throw new Error();
                 }
 
-                return appendSymbol === 0
-                  ? states.findIndex((t) => t === stateI0).toString(10)
-                  : states.findIndex((t) => t === stateI1).toString(10);
+                return (
+                  (appendSymbol === 0
+                    ? states.findIndex((t) => t === stateI0).toString(10)
+                    : states.findIndex((t) => t === stateI1).toString(10)) +
+                  (mustSetLastReadIndicatorLetterSet.includes(char) ? ".l_" + appendSymbol : "")
+                );
               } else {
                 return index.toString(10) + (appendSymbol === 0 ? symbol0.value : symbol1.value);
               }
@@ -756,7 +783,6 @@ export class Converter {
 
             const str = (function () {
               let ret = char + (appendStr.length === 1 ? "_" + appendStr : "_{" + appendStr + "}");
-
               return d ? "{" + ret + "}" + d : ret;
             })();
 
@@ -770,16 +796,47 @@ export class Converter {
             return newLetter;
           };
 
+          // 前の状態からappendSymbolによって現在の状態に移った時どうなるか
+          const toLetter2 = function (char: string, appendSymbol: 0 | 1) {
+            const appendStr =
+              index.toString(10) +
+              (mustSetLastReadIndicatorLetterSet.includes(char)
+                ? ".l_" + appendSymbol.toString(10)
+                : "");
+
+            let str = char + (appendStr.length === 1 ? "_" + appendStr : "_{" + appendStr + "}");
+
+            const mayTheLetter = lettersPool.find((letter) => letter.value === str);
+            if (mayTheLetter !== undefined) {
+              return mayTheLetter;
+            }
+
+            const [newLetter] = TagSystemLetterFrom(str);
+            lettersPool.push(newLetter);
+            return newLetter;
+          };
+
           symbolCorrespondenceTable.push({
             state: state,
-            A: toLetter("A"),
-            B: toLetter("B"),
-            alpha: toLetter("α"),
-            beta: toLetter("β"),
+            whichSymbolReadBefore: symbol0,
+            A: toLetter2("A", 0),
+            B: toLetter2("B", 0),
+            alpha: toLetter2("α", 0),
+            beta: toLetter2("β", 0),
+          });
+
+          symbolCorrespondenceTable.push({
+            state: state,
+            whichSymbolReadBefore: symbol1,
+            A: toLetter2("A", 1),
+            B: toLetter2("B", 1),
+            alpha: toLetter2("α", 1),
+            beta: toLetter2("β", 1),
           });
 
           if (acceptState === state) {
-            ruleSetBuilder.addStop(toLetter("A"));
+            ruleSetBuilder.addStop(toLetter2("A", 0));
+            ruleSetBuilder.addStop(toLetter2("A", 1));
             ruleSetBuilder.add(toLetter("α"), [X]);
             ruleSetBuilder.add(toLetter("B"), [X]);
             ruleSetBuilder.add(toLetter("β"), [X]);
@@ -819,9 +876,11 @@ export class Converter {
 
           if (tmout.move === "R") {
             if (tmout.write === symbol0) {
-              ruleSetBuilder.add(toLetter("A"), [toLetter("C"), X]);
+              ruleSetBuilder.add(toLetter2("A", 0), [toLetter("C"), X]);
+              ruleSetBuilder.add(toLetter2("A", 1), [toLetter("C"), X]);
             } else {
-              ruleSetBuilder.add(toLetter("A"), [toLetter("C"), X, toLetter("c"), X]);
+              ruleSetBuilder.add(toLetter2("A", 0), [toLetter("C"), X, toLetter("c"), X]);
+              ruleSetBuilder.add(toLetter2("A", 1), [toLetter("C"), X, toLetter("c"), X]);
             }
             ruleSetBuilder
               .add(toLetter("α"), [toLetter("c"), X, toLetter("c"), X])
@@ -829,7 +888,8 @@ export class Converter {
               .add(toLetter("β"), [toLetter("s")]);
           } else {
             ruleSetBuilder
-              .add(toLetter("A"), [toLetter("A", undefined, "'"), X])
+              .add(toLetter2("A", 0), [toLetter("A", undefined, "'"), X])
+              .add(toLetter2("A", 1), [toLetter("A", undefined, "'"), X])
               .add(toLetter("α"), [toLetter("α", undefined, "'"), X])
               .add(toLetter("A", undefined, "'"), [toLetter("S", undefined, "'")])
               .add(toLetter("α", undefined, "'"), [toLetter("s", undefined, "'")])
@@ -845,7 +905,7 @@ export class Converter {
               ruleSetBuilder.add(toLetter("B"), [
                 toLetter("C", undefined, "'"),
                 X,
-                toLetter("C", undefined, "'"),
+                toLetter("c", undefined, "'"),
                 X,
               ]);
             }
@@ -859,7 +919,6 @@ export class Converter {
           letterX: X,
           symbol0: symbol0,
           symbol1: symbol1,
-          initState: initState,
           symbolCorrespondenceTable: symbolCorrespondenceTable,
         };
       }

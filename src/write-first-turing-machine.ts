@@ -282,11 +282,11 @@ export class WriteFirstTMRuleSetBuilder {
 export class WriteFirstTuringMachine implements ComputationSystem {
   private readonly blank: TMSymbol;
   private readonly ruleset: WriteFirstTMRuleSet;
-  private readonly initState: TMState;
   private readonly acceptState: TMState | null;
 
   private nowState: TMState | null = null;
 
+  private initState: TMState | null = null;
   private initialWord: TMSymbol[] | null = null;
   private tape: TMTape | null = null;
   private headPosition = 0;
@@ -297,18 +297,13 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    * Initialize machine with given arguments.
    * @param blank A blank symbol. Both ends of the tape are (conceptually) initialized by an infinite sequence of this symbol.
    * @param ruleset Rules that determine how the head of the machine moves.
-   * @param initState State of the machine when it starts to move.
    * @param acceptState State of the machine when the word is accepted.
+   *
+   * @remark initState is set at {@link WriteFirstTuringMachine.start()}.
    */
-  constructor(
-    blank: TMSymbol,
-    ruleset: WriteFirstTMRuleSet,
-    initState: TMState,
-    acceptState: TMState | null = null
-  ) {
+  constructor(blank: TMSymbol, ruleset: WriteFirstTMRuleSet, acceptState: TMState | null = null) {
     this.blank = blank;
     this.ruleset = ruleset;
-    this.initState = initState;
     this.acceptState = acceptState;
   }
 
@@ -322,17 +317,18 @@ export class WriteFirstTuringMachine implements ComputationSystem {
 
   /**
    * Initiates processing for a given word.
-   * @param word A word being processed.
-   * @param headPosition Relative position of the head at the start of processing.
-   * For Instance, "3" means to start from word[3], and "-1" means to start from the blank symbol to the left of the word.
+   * @param input the Write-First TM's input. It' an array that contains the following elements:
+   * - word - A word being processed.
+   * - headPosition - Relative position of the head at the start of processing. For Instance, "3" means to start from word[3], and "-1" means to start from the blank symbol to the left of the word.
+   * - state - now internal state.
    */
-  public start(input: [word: TMSymbol[], headPosition: number]) {
-    const [word, headPosition] = input;
+  public start(input: [word: TMSymbol[], headPosition: number, state: TMState]) {
+    const [word, headPosition, state] = input;
 
     this.initialWord = [...word];
     this.tape = TMTape.create(word, this.blank);
     this.headPosition = headPosition;
-    this.nowState = this.initState;
+    this.nowState = this.initState = state;
     this.halt = false;
   }
 
@@ -438,7 +434,6 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    * - symbolSet - List of all symbols this machine uses.
    * - blankSymbol - A blank symbol.
    * - inputSymbolSet - List of all symbols that can be used for words processed by this machine. (In this implementation, it is exactly the same as symbolSet.)
-   * - ruleSet - List of rules used by this machine.
    * - initState - The state of this machine when it starts.
    * - acceptState - The state when this machine accepts a word.
    *
@@ -446,7 +441,6 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    */
   public asTuple() {
     const states = this.ruleset.getAllUsedStates();
-    states.add(this.initState);
     if (this.acceptState !== null) states.add(this.acceptState);
 
     const symbols = this.ruleset.getAllUsedSymbols();
@@ -458,7 +452,6 @@ export class WriteFirstTuringMachine implements ComputationSystem {
       blankSymbol: this.blank,
       inputSymbolSet: new Set(symbols),
       ruleset: this.ruleset,
-      initState: this.initState,
       acceptState: this.acceptState,
     };
   }
@@ -487,7 +480,7 @@ export class WriteFirstTuringMachine implements ComputationSystem {
   }
 
   public clone(): WriteFirstTuringMachine {
-    return new WriteFirstTuringMachine(this.blank, this.ruleset, this.initState, this.acceptState);
+    return new WriteFirstTuringMachine(this.blank, this.ruleset, this.acceptState);
   }
 
   /**
@@ -495,6 +488,6 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    * @returns String representation of this machine.
    */
   public toString() {
-    return `[blank=${this.blank.value},ruleset=${this.ruleset},init=${this.initState.value},acc=${this.acceptState?.value}]`;
+    return `[blank=${this.blank.value},ruleset=${this.ruleset},acc=${this.acceptState?.value}]`;
   }
 }
