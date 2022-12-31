@@ -86,6 +86,19 @@ console.log(afterConfig.word.toString());
 <details><summary>Code (Folded)</summary>
 
 ```typescript
+import {
+  TagSystem,
+  TagSystemConfiguration,
+  TagSystemLetterFrom,
+  TagSystemRuleSet,
+  Converter,
+  createHierarchy,
+  ITransformHierarchy,
+  Tag2SystemToTuringMachine218TransformLog,
+  TuringMachine,
+  TMConfiguration,
+} from "computation-system";
+
 // Let's make "Turing Machine" which simulates "2-Tag System". (Yurii Rogozhin. Small universal Turing machines. Theoretical Computer Science, 168(2):215–240, 1996.)
 
 //Create 2-Tag System first.
