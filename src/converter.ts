@@ -137,12 +137,14 @@ export class Converter {
           tuple.acceptState
         );
       }
-      private transformTable: Tag2SystemToTuringMachine218TransformLog | null = [];
+      private transformLog: Tag2SystemToTuringMachine218TransformLog | null = null;
 
       private startHead = -1;
 
       interpretConfigration(real: TMConfiguration | null): TagSystemConfiguration | null {
-        if (real === null || this.transformTable === null) return null;
+        if (real === null || this.transformLog === null) return null;
+
+        const { transformTable } = this.transformLog;
 
         const tape = real.tape;
         const range = tape.getWrittenRange();
@@ -152,7 +154,7 @@ export class Converter {
 
         if (tape.read(range.left + 1) === R) {
           //Last letter must be STOP.
-          letters.push(this.transformTable[this.transformTable.length - 1].letter);
+          letters.push(transformTable[transformTable.length - 1].letter);
           stopped = true;
         }
 
@@ -173,7 +175,7 @@ export class Converter {
         for (let oneCount = 0; i <= range.right; i++) {
           const read = tape.read(i);
           if (read === M) {
-            const letterCandinate = this.transformTable.find((elm) => elm.N === oneCount)?.letter;
+            const letterCandinate = transformTable.find((elm) => elm.N === oneCount)?.letter;
             if (letterCandinate === undefined) {
               return null;
             }
@@ -202,11 +204,11 @@ export class Converter {
       interpretInput(
         input: [letters: TagSystemLetter[]]
       ): [word: TMSymbol[], headPosition: number] {
-        if (this.transformTable === null) {
+        if (this.transformLog === null) {
           throw new Error("interpretInput() was called before bind() was called.");
         }
 
-        const constTable = this.transformTable;
+        const constTable = this.transformLog.transformTable;
 
         const [virtual] = input;
         const firstLettersMapped = virtual
@@ -223,7 +225,7 @@ export class Converter {
           })
           .reduce((a, b) => [...a, ...b]);
 
-        const rules = [...this.transformTable]
+        const rules = [...this.transformLog.transformTable]
           .reverse()
           .map((elm) => elm.outRepresent)
           .reduce((a, b) => [...a, ...b]);
@@ -336,30 +338,32 @@ export class Converter {
           }
         });
 
-        this.transformTable = table.map((elm) => {
-          const { letter, output, N, charRepresent, outRepresent } = elm;
-          /* istanbul ignore next */
-          if (
-            letter === undefined ||
-            output === undefined ||
-            N === undefined ||
-            charRepresent === undefined ||
-            outRepresent === undefined
-          ) {
-            throw new Error("Internal Error!");
-          }
-          return {
-            letter: letter,
-            output: output,
-            N: N,
-            charRepresent: charRepresent,
-            outRepresent: outRepresent,
-          };
-        });
+        this.transformLog = {
+          transformTable: table.map((elm) => {
+            const { letter, output, N, charRepresent, outRepresent } = elm;
+            /* istanbul ignore next */
+            if (
+              letter === undefined ||
+              output === undefined ||
+              N === undefined ||
+              charRepresent === undefined ||
+              outRepresent === undefined
+            ) {
+              throw new Error("Internal Error!");
+            }
+            return {
+              letter: letter,
+              output: output,
+              N: N,
+              charRepresent: charRepresent,
+              outRepresent: outRepresent,
+            };
+          }),
+        };
       }
 
       getTransFormLog(): Tag2SystemToTuringMachine218TransformLog | null {
-        return this.transformTable;
+        return this.transformLog;
       }
     })();
 
@@ -586,7 +590,6 @@ export class Converter {
         let i = 2;
         let leftNum = 0;
         let rightNum = 0;
-        if (wordLetters.length <= i) return null;
         while (wordLetters[i] !== useLetterSet.B) {
           if (wordLetters.length <= i) return null;
           const theLetter = wordLetters[i];
@@ -602,7 +605,6 @@ export class Converter {
         if (wordLetters[i + 1] !== this.transformLog.letterX) return null;
         i += 2;
         while (i < wordLetters.length) {
-          if (wordLetters.length <= i) return null;
           const theLetter = wordLetters[i];
           if (theLetter !== useLetterSet.beta) return null;
           i++;
@@ -620,9 +622,7 @@ export class Converter {
           .map((t) => (t === "0" ? symbol0 : symbol1));
 
         const tape = TMTape.create(
-          leftToSymbols
-            .concat([useLetterSet.whichSymbolReadBefore ?? { meaning: "symbol", value: "*" }])
-            .concat(rightToSymbols),
+          leftToSymbols.concat([useLetterSet.whichSymbolReadBefore]).concat(rightToSymbols),
           this.transformLog.symbol0
         ).locked();
 

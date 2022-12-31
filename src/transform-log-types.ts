@@ -8,12 +8,14 @@ import {
 } from "./computation-system";
 
 export type Tag2SystemToTuringMachine218TransformLog = {
-  readonly letter: TagSystemLetter;
-  readonly output: TagSystemWord | "STOP";
-  readonly N: number;
-  readonly charRepresent: TMSymbol[];
-  readonly outRepresent: TMSymbol[];
-}[];
+  transformTable: {
+    readonly letter: TagSystemLetter;
+    readonly output: TagSystemWord | "STOP";
+    readonly N: number;
+    readonly charRepresent: TMSymbol[];
+    readonly outRepresent: TMSymbol[];
+  }[];
+};
 
 export type TuringMachine2SymbolToWriteFirstTuringMachineTransformLog = {
   readonly symbol0: TMSymbol;
