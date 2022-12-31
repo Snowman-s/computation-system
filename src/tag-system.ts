@@ -1,3 +1,5 @@
+import { ComputationSystem } from "./computation-system";
+
 /**
  * Letters that make up the word to be processed in the tag system.
  *
@@ -247,7 +249,7 @@ export class TagSystemRuleSetBuilder {
 /**
  * A object for simulate the tag system.
  */
-export class TagSystem {
+export class TagSystem implements ComputationSystem {
   private readonly deleteNum: number;
   private readonly ruleSet: TagSystemRuleSet;
   private letters: TagSystemLetter[] | null = null;

@@ -1,4 +1,7 @@
 // この似通った二つを適切に区別する為、meaningを定義
+
+import { ComputationSystem } from "./computation-system";
+
 /**
  * The turing machine's "state", or in other words, what determines which rules are executed.
  */
@@ -379,7 +382,7 @@ export interface ILockedTMTape {
 /**
  * A object for simulate the turing machine.
  */
-export class TuringMachine {
+export class TuringMachine implements ComputationSystem {
   private readonly blank: TMSymbol;
   private readonly ruleset: TMRuleSet;
   private readonly initState: TMState;
