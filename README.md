@@ -86,18 +86,6 @@ console.log(afterConfig.word.toString());
 <details><summary>Code (Folded)</summary>
 
 ```typescript
-import {
-  TagSystem,
-  TagSystemConfiguration,
-  TagSystemLetterFrom,
-  TagSystemRuleSet,
-  TagSystemWord,
-  TuringMachine,
-  Converter,
-  ITransformHierarchy,
-  TransformLogTableElm,
-} from "../src/computation-system";
-
 // Let's make "Turing Machine" which simulates "2-Tag System". (Yurii Rogozhin. Small universal Turing machines. Theoretical Computer Science, 168(2):215–240, 1996.)
 
 //Create 2-Tag System first.
@@ -108,8 +96,10 @@ const tagSystemRuleSet = TagSystemRuleSet.builder().add(A, [B, H]).add(B, [A]).a
 const tagSystem = new TagSystem(2, tagSystemRuleSet);
 
 //Create Turing Machine which can simulate ANY 2-Tag System.
-const transformHierarchy: ITransformHierarchy<[TagSystem, TuringMachine]> =
-  Converter.tag2SystemToTuringMachine218New();
+const transformHierarchy: ITransformHierarchy<
+  [TagSystem, TuringMachine],
+  [Tag2SystemToTuringMachine218TransformLog]
+> = createHierarchy(Converter.tag2SystemToTuringMachine218());
 
 //Pass the 2-Tag System and start Turing Machine.
 //(The Tag System will be copied and freezed, to refer operation-INdependent information)
@@ -128,14 +118,14 @@ const configOfTagSystem: TagSystemConfiguration = transformHierarchy.getConfigur
 console.log(configOfTagSystem.word.toString()); // HA
 
 //Get configuration of the Turing Machine and print tape.
-const configOfTM: TagSystemConfiguration = transformHierarchy.getConfiguration(1)!;
+const configOfTM: TMConfiguration = transformHierarchy.getConfiguration(1)!;
 
 console.log(configOfTM.tape.toString());
 
-//Get the table showing how the transformation was performed.
-//The format of that table depends on the conversion method. See the code of "Converter.ts".
+//Get the log-object showing how the transformation was performed.
+//The format of that table depends on the conversion method. See the code of "converter.ts".
 //!WARN! This feature is currently particularly unstable and can easily change (e.g., method names), so use with caution.
-let table = transformHierarchy.getTransFormLogTable(0)!;
+const table = transformHierarchy.getTransFormLogOf(0)!;
 ```
 
 </details>
@@ -148,12 +138,16 @@ let table = transformHierarchy.getTransFormLogTable(0)!;
 
 - Turing Machine
 - Tag System
+- Write-First Turing Machine (Usually used in the middle of a conversion of a computational models by a _Converter_.)
 
 ### Convert (Beta)
 
 - "Turing Machine" simulates "2-Tag System"  
-   (Yurii Rogozhin. Small universal Turing machines. Theoretical Computer
-  Science, 168(2):215–240, 1996.)
+   (ROGOZHIN, Yurii. Small universal Turing machines. Theoretical Computer Science, 1996, 168.2: 215-240.)
+
+- "Write-First Turing Machine with 2-symbol" simulates "Turing Machine with 2-symbol"
+- "Tag System" simulates "Write-First Turing Machine with 2-symbol"
+  (COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.)
 
 ## Documents
 
