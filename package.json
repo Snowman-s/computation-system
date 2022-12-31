@@ -1,6 +1,6 @@
 {
   "name": "computation-system",
-  "version": "0.1.5",
+  "version": "0.2.0",
   "description": "Simulate computational models, such as Turing machines.",
   "keywords": [],
   "main": "dist/computation-system.umd.js",
