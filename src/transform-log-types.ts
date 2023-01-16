@@ -53,3 +53,10 @@ export type WriteFirstTM2SymbolToTagSystemTransformLog = {
     beta: TagSystemLetter;
   }[];
 };
+
+export type TuringMachineTo2SymbolTransformLog = {
+  l: number;
+  blank: { original: TMSymbol; to: TMSymbol[] };
+  symbolCorrespondenceTable: { original: TMSymbol; to: TMSymbol[] }[];
+  stateCorrespondenceTable: { original: TMState; to: TMState }[];
+};

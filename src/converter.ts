@@ -28,6 +28,7 @@ import {
   WriteFirstTM2SymbolToTagSystemTransformLog,
   Tag2SystemToTuringMachine218TransformLog,
   TuringMachine2SymbolToWriteFirstTuringMachineTransformLog,
+  TuringMachineTo2SymbolTransformLog,
 } from "./transform-log-types";
 
 export class Converter {
@@ -227,8 +228,7 @@ export class Converter {
 
         const rules = [...this.transformLog.transformTable]
           .reverse()
-          .map((elm) => elm.outRepresent)
-          .reduce((a, b) => [...a, ...b]);
+          .flatMap((elm) => elm.outRepresent);
 
         const word = [...rules, F, F, ...firstLettersMapped];
 
@@ -242,23 +242,32 @@ export class Converter {
         const ruleSet = system.ruleSet;
 
         // Organize letters and create table
-        const rawLetters = Array.from(ruleSet.getAllUsedLetters());
+        const rawLetters = Array.from(system.letterSet);
 
         let stopLetter: TagSystemLetter | null = null;
         let organizedLetters: TagSystemLetter[] = [];
         rawLetters.forEach((v) => {
           const rule = ruleSet.getCandinates(v);
           if (rule.stop) {
-            if (stopLetter === null) {
-              stopLetter = v;
-            }
+            if (stopLetter !== null) throw new Error();
+            stopLetter = v;
             return;
           }
 
           organizedLetters.push(v);
         });
 
-        organizedLetters.sort((a, b) => (a.value > b.value ? 1 : -1));
+        // 各文字の出現頻度を調べる
+        const appearTimes: Map<TagSystemLetter, number> = new Map();
+        organizedLetters.forEach((letter) => {
+          const rule = ruleSet.getCandinates(letter);
+          if (rule.stop) throw new Error("Internal Error!");
+          rule.writeWord.asLetters().forEach((outLetter) => {
+            appearTimes.set(outLetter, (appearTimes.get(outLetter) ?? 0) + 1);
+          });
+        });
+
+        organizedLetters.sort((a, b) => (appearTimes.get(b) ?? 0) - (appearTimes.get(a) ?? 0));
 
         if (stopLetter !== null) organizedLetters.push(stopLetter);
 
@@ -404,8 +413,7 @@ export class Converter {
       tmSample: WriteFirstTuringMachine | null = null;
 
       interpretConfigration(real: TMConfiguration | null): TMConfiguration | null {
-        if (real === null) return null;
-        if (this.transformLog === null) return null;
+        if (real === null || this.transformLog === null) return null;
 
         const state = this.transformLog.stateCorrespondenceTable.filter(
           (elm) => elm.writeTMState === real.nowState
@@ -475,9 +483,13 @@ export class Converter {
 
         const ruleSetBuilder = WriteFirstTMRuleSet.builder();
         states.forEach((state) => {
+          if (state === system.acceptState) return;
+
           symbols.forEach((symbol) => {
             const candinates = system.ruleset.getCandinates(state, symbol);
             if (candinates.length === 0) return;
+            if (candinates.length !== 1)
+              console.error(`warn: too many rules found for (${state.value}, ${symbol.value}).`);
             candinates.forEach((candinate) => {
               if (candinate.move !== "HALT") {
                 ruleSetBuilder
@@ -574,15 +586,14 @@ export class Converter {
 
         if (wordLetters.length < 2) return null;
 
-        const useLetterSets = this.transformLog.symbolCorrespondenceTable.filter(
-          (elm) => elm.A === wordLetters[0]
+        const useLetterSet = this.transformLog.symbolCorrespondenceTable.find(
+          (elm) =>
+            elm.A === wordLetters[0] &&
+            wordLetters.map((letter) => elm.B === letter).reduce((a, b) => a || b, false)
         );
 
-        if (useLetterSets.length !== 1) {
-          return null;
-        }
+        if (useLetterSet === undefined) return null;
 
-        const useLetterSet = useLetterSets[0];
         if (wordLetters[1] !== this.transformLog.letterX) {
           return null;
         }
@@ -707,7 +718,7 @@ export class Converter {
 
         const lettersPool: TagSystemLetter[] = [];
 
-        const mustSetLastReadIndicatorLetterSet = ["A"];
+        const mustSetLastReadIndicatorLetterSet = ["B"];
 
         states.forEach((state, index) => {
           const tmout = (function () {
@@ -733,7 +744,13 @@ export class Converter {
 
               return ret;
             } else if (tmoutCandinates.length > 1) {
-              throw new Error();
+              throw new Error(
+                `Too much rules for "${state.value}" is defined: ${tmoutCandinates.map(
+                  (candinate) => {
+                    return `"${state.value} => ${candinate.write.value}, ${candinate.move}"`;
+                  }
+                )}`
+              );
             }
 
             return tmoutCandinates[0];
@@ -742,7 +759,11 @@ export class Converter {
           // 現在の状態からappendSymbolに移った時どうなるか
           const toLetter = function (char: string, appendSymbol?: 0 | 1, d?: "'") {
             const appendStr = (function () {
-              if (appendSymbol === undefined) return index.toString(10);
+              if (appendSymbol === undefined) {
+                if (mustSetLastReadIndicatorLetterSet.includes(char))
+                  throw new Error("Internal Error!");
+                return index.toString(10);
+              }
 
               const merge =
                 (d !== "'" && ["A", "α", "B", "β"].findIndex((c) => c === char) !== -1) ||
@@ -797,7 +818,7 @@ export class Converter {
           };
 
           // 前の状態からappendSymbolによって現在の状態に移った時どうなるか
-          const toLetter2 = function (char: string, appendSymbol: 0 | 1) {
+          const toLetter2 = function (char: string, appendSymbol: 0 | 1, d?: "'") {
             const appendStr =
               index.toString(10) +
               (mustSetLastReadIndicatorLetterSet.includes(char)
@@ -805,6 +826,8 @@ export class Converter {
                 : "");
 
             let str = char + (appendStr.length === 1 ? "_" + appendStr : "_{" + appendStr + "}");
+
+            if (d === "'") str = "{" + str + "}" + d;
 
             const mayTheLetter = lettersPool.find((letter) => letter.value === str);
             if (mayTheLetter !== undefined) {
@@ -835,12 +858,13 @@ export class Converter {
           });
 
           if (acceptState === state) {
-            ruleSetBuilder.addStop(toLetter2("A", 0));
-            ruleSetBuilder.addStop(toLetter2("A", 1));
+            ruleSetBuilder.addStop(toLetter("A"));
             ruleSetBuilder.add(toLetter("α"), [X]);
-            ruleSetBuilder.add(toLetter("B"), [X]);
+            ruleSetBuilder.add(toLetter2("B", 0), [X]);
+            ruleSetBuilder.add(toLetter2("B", 1), [X]);
             ruleSetBuilder.add(toLetter("β"), [X]);
-            ruleSetBuilder.add(toLetter("B", undefined, "'"), [X]);
+            ruleSetBuilder.add(toLetter2("B", 0, "'"), [toLetter2("B", 0), X]);
+            ruleSetBuilder.add(toLetter2("B", 1, "'"), [toLetter2("B", 1), X]);
             ruleSetBuilder.add(toLetter("β", undefined, "'"), [X]);
             return;
           }
@@ -871,25 +895,25 @@ export class Converter {
             .add(toLetter("d", 1, "'"), [toLetter("β", 1, "'"), X])
             .add(toLetter("T", 1, "'"), [toLetter("A", 1), X])
             .add(toLetter("t", 1, "'"), [toLetter("α", 1), X])
-            .add(toLetter("B", undefined, "'"), [toLetter("B", undefined), X])
+
+            .add(toLetter2("B", 0, "'"), [toLetter2("B", 0), X])
+            .add(toLetter2("B", 1, "'"), [toLetter2("B", 1), X])
             .add(toLetter("β", undefined, "'"), [toLetter("β", undefined), X]);
 
           if (tmout.move === "R") {
             if (tmout.write === symbol0) {
-              ruleSetBuilder.add(toLetter2("A", 0), [toLetter("C"), X]);
-              ruleSetBuilder.add(toLetter2("A", 1), [toLetter("C"), X]);
+              ruleSetBuilder.add(toLetter("A"), [toLetter("C"), X]);
             } else {
-              ruleSetBuilder.add(toLetter2("A", 0), [toLetter("C"), X, toLetter("c"), X]);
-              ruleSetBuilder.add(toLetter2("A", 1), [toLetter("C"), X, toLetter("c"), X]);
+              ruleSetBuilder.add(toLetter("A"), [toLetter("C"), X, toLetter("c"), X]);
             }
             ruleSetBuilder
               .add(toLetter("α"), [toLetter("c"), X, toLetter("c"), X])
-              .add(toLetter("B"), [toLetter("S")])
+              .add(toLetter2("B", 0), [toLetter("S")])
+              .add(toLetter2("B", 1), [toLetter("S")])
               .add(toLetter("β"), [toLetter("s")]);
           } else {
             ruleSetBuilder
-              .add(toLetter2("A", 0), [toLetter("A", undefined, "'"), X])
-              .add(toLetter2("A", 1), [toLetter("A", undefined, "'"), X])
+              .add(toLetter("A"), [toLetter("A", undefined, "'"), X])
               .add(toLetter("α"), [toLetter("α", undefined, "'"), X])
               .add(toLetter("A", undefined, "'"), [toLetter("S", undefined, "'")])
               .add(toLetter("α", undefined, "'"), [toLetter("s", undefined, "'")])
@@ -899,15 +923,25 @@ export class Converter {
                 toLetter("c", undefined, "'"),
                 X,
               ]);
+
             if (tmout.write === symbol0) {
-              ruleSetBuilder.add(toLetter("B"), [toLetter("C", undefined, "'"), X]);
+              ruleSetBuilder
+                .add(toLetter2("B", 0), [toLetter("C", undefined, "'"), X])
+                .add(toLetter2("B", 1), [toLetter("C", undefined, "'"), X]);
             } else {
-              ruleSetBuilder.add(toLetter("B"), [
-                toLetter("C", undefined, "'"),
-                X,
-                toLetter("c", undefined, "'"),
-                X,
-              ]);
+              ruleSetBuilder
+                .add(toLetter2("B", 0), [
+                  toLetter("C", undefined, "'"),
+                  X,
+                  toLetter("c", undefined, "'"),
+                  X,
+                ])
+                .add(toLetter2("B", 1), [
+                  toLetter("C", undefined, "'"),
+                  X,
+                  toLetter("c", undefined, "'"),
+                  X,
+                ]);
             }
           }
         });
@@ -931,6 +965,297 @@ export class Converter {
       }
       asIndependantSystem(): TagSystem | null {
         return this.tagSystemSample === null ? null : this.tagSystemSample.clone();
+      }
+    })();
+  }
+
+  /**
+   * @see SHANNON, Claude E. A universal Turing machine with two internal states. Automata studies, 1956, 34: 157-165.
+   */
+  public static turingMachineTo2Symbol(): ITransformElement<
+    TuringMachine,
+    TuringMachine,
+    TuringMachineTo2SymbolTransformLog
+  > {
+    return new (class
+      implements
+        ITransformElement<TuringMachine, TuringMachine, TuringMachineTo2SymbolTransformLog>
+    {
+      turingMachineSample: TuringMachine | null = null;
+      transformLog: TuringMachineTo2SymbolTransformLog | null = null;
+
+      interpretConfigration(real: TMConfiguration | null): TMConfiguration | null {
+        if (real === null || this.transformLog === null) return null;
+
+        const { tape, nowState, headPosition } = real;
+        const { l, symbolCorrespondenceTable, stateCorrespondenceTable } = this.transformLog;
+
+        const virtualState = stateCorrespondenceTable.find((row) => row.to === nowState);
+        if (virtualState === undefined) return null;
+
+        const { left, right } = tape.getWrittenRange();
+        const adjustedLeft = left - ((l - ((headPosition - left) % l)) % l);
+
+        const interpretedSymbols: TMSymbol[] = [];
+        let realTmpSymbols: TMSymbol[] = [];
+        for (
+          let tapeIndex = adjustedLeft;
+          tapeIndex <= right || (tapeIndex - headPosition) % l !== 0;
+          tapeIndex++
+        ) {
+          realTmpSymbols.push(tape.read(tapeIndex));
+
+          if (realTmpSymbols.length === l) {
+            const found = symbolCorrespondenceTable.find((row) =>
+              row.to
+                .map((row2, index) => row2 === realTmpSymbols[index])
+                .reduce((a, b) => a && b, true)
+            );
+            if (found === undefined) return null;
+
+            interpretedSymbols.push(found.original);
+            realTmpSymbols = [];
+          }
+        }
+
+        return {
+          nowState: virtualState.original,
+          headPosition: Math.round(headPosition / l),
+          tape: TMTape.create(interpretedSymbols, this.transformLog.blank.original).locked(),
+        };
+      }
+      interpretInput(
+        virtual: [word: TMSymbol[], headPosition: number]
+      ): [word: TMSymbol[], headPosition: number] {
+        if (this.transformLog === null) throw new Error();
+
+        const [word, headPosition] = virtual;
+        const { l, symbolCorrespondenceTable } = this.transformLog;
+
+        const tape = word.flatMap((symbol) => {
+          const found = symbolCorrespondenceTable.find((row) => row.original === symbol);
+          if (found === undefined) throw new Error();
+
+          return found.to;
+        });
+
+        return [tape, headPosition * l];
+      }
+      bind(system: {
+        stateSet: Set<TMState>;
+        symbolSet: Set<TMSymbol>;
+        blankSymbol: TMSymbol;
+        inputSymbolSet: Set<TMSymbol>;
+        ruleset: TMRuleSet;
+        initState: TMState;
+        acceptState: TMState | null;
+      }): void {
+        const { stateSet, symbolSet, blankSymbol, ruleset, initState, acceptState } = system;
+
+        if (symbolSet.size <= 2) throw new Error();
+
+        const [symbol0, symbol1] = TMSymbolFrom("0", "1");
+
+        const statePool: TMState[] = [];
+
+        const toNewStateTLR = function (
+          letter: string,
+          originalState: TMState,
+          originalSymbols: string[]
+        ) {
+          const joined = originalSymbols.join(",");
+          const str =
+            letter + "_{" + originalState.value + (joined.length === 0 ? "" : "," + joined) + "}";
+          const intersect = statePool.find((state) => state.value === str);
+          if (intersect === undefined) {
+            const [newState] = TMStateFrom(str);
+            statePool.push(newState);
+            return newState;
+          } else {
+            return intersect;
+          }
+        };
+
+        const toNewStateUV = function (letter: string, originalState: TMState, count: number) {
+          const str = letter + "_{" + originalState.value + "," + count.toString(10) + "}";
+          const intersect = statePool.find((state) => state.value === str);
+          if (intersect === undefined) {
+            const [newState] = TMStateFrom(str);
+            statePool.push(newState);
+            return newState;
+          } else {
+            return intersect;
+          }
+        };
+
+        const states = [...stateSet].sort((a, b) => (a.value > b.value ? 1 : -1));
+        const symbols = [blankSymbol].concat(
+          [...symbolSet]
+            .filter((symbol) => symbol !== blankSymbol)
+            .sort((a, b) => (a.value > b.value ? 1 : -1))
+        );
+        const l = (symbols.length - 1).toString(2).length;
+
+        const builder = TMRuleSet.builder();
+        for (const S of states) {
+          builder
+            .state(toNewStateTLR("T", S, []))
+            .add(symbol0, symbol0, "R", toNewStateTLR("T", S, ["0"]))
+            .add(symbol1, symbol1, "R", toNewStateTLR("T", S, ["1"]))
+            .state(toNewStateTLR("L", S, ["0"]))
+            .add(symbol0, symbol0, "L", toNewStateUV("V", S, 1))
+            .add(symbol1, symbol0, "L", toNewStateUV("V", S, 1))
+            .state(toNewStateTLR("L", S, ["1"]))
+            .add(symbol0, symbol1, "L", toNewStateUV("V", S, 1))
+            .add(symbol1, symbol1, "L", toNewStateUV("V", S, 1))
+            .state(toNewStateTLR("R", S, ["0"]))
+            .add(symbol0, symbol0, "R", toNewStateUV("U", S, 1))
+            .add(symbol1, symbol0, "R", toNewStateUV("U", S, 1))
+            .state(toNewStateTLR("R", S, ["1"]))
+            .add(symbol0, symbol1, "R", toNewStateUV("U", S, 1))
+            .add(symbol1, symbol1, "R", toNewStateUV("U", S, 1));
+
+          for (let s = 2; s <= 2 ** (l - 1) - 1; s++) {
+            // これで全てのシンボルの組み合わせが網羅できたことになる(長さ0と、長さ*l-1*の状態のルールを除く)：
+            const splited_s = s.toString(2).split("").slice(1);
+
+            builder
+              .state(toNewStateTLR("T", S, splited_s))
+              .add(symbol0, symbol0, "R", toNewStateTLR("T", S, splited_s.concat(["0"])))
+              .add(symbol1, symbol1, "R", toNewStateTLR("T", S, splited_s.concat(["1"])))
+              .state(toNewStateTLR("L", S, splited_s.concat(["0"])))
+              .add(symbol0, symbol0, "L", toNewStateTLR("L", S, splited_s))
+              .add(symbol1, symbol0, "L", toNewStateTLR("L", S, splited_s))
+              .state(toNewStateTLR("L", S, splited_s.concat(["1"])))
+              .add(symbol0, symbol1, "L", toNewStateTLR("L", S, splited_s))
+              .add(symbol1, symbol1, "L", toNewStateTLR("L", S, splited_s))
+              .state(toNewStateTLR("R", S, splited_s.concat(["0"])))
+              .add(symbol0, symbol0, "L", toNewStateTLR("R", S, splited_s))
+              .add(symbol1, symbol0, "L", toNewStateTLR("L", S, splited_s))
+              .state(toNewStateTLR("R", S, splited_s.concat(["1"])))
+              .add(symbol0, symbol1, "L", toNewStateTLR("R", S, splited_s))
+              .add(symbol1, symbol1, "L", toNewStateTLR("R", S, splited_s));
+          }
+
+          for (let s = 2 ** (l - 1); s <= 2 ** l - 1; s++) {
+            // これで全ての*l-1の長さの*シンボルの組み合わせが網羅できたことになる：
+            const splited_s = s.toString(2).split("").slice(1);
+
+            builder.state(toNewStateTLR("T", S, splited_s));
+
+            // 各シンボルについて、そのシンボルはあるのだろうか？
+            const symbolIndex0 = parseInt(splited_s.join("") + "0", 2)!;
+
+            if (symbolIndex0 <= symbols.length - 1) {
+              const candinates = ruleset.getCandinates(S, symbols[symbolIndex0]);
+
+              if (candinates.length > 1) throw new Error();
+              else if (candinates.length === 1) {
+                const rule = candinates[0];
+                if (rule.move === "HALT") {
+                  builder.addHALT(symbol0);
+                } else {
+                  const writeSymbol = symbols.findIndex((symbol) => symbol === rule.write);
+                  const splitedSymbol = writeSymbol.toString(2).split("");
+                  const filledSymbol = new Array<string>(l - splitedSymbol.length)
+                    .fill("0")
+                    .concat(splitedSymbol);
+
+                  builder.add(
+                    symbol0,
+                    filledSymbol[filledSymbol.length - 1] === "0" ? symbol0 : symbol1,
+                    "L",
+                    toNewStateTLR(rule.move, rule.nextState, filledSymbol.slice(0, -1))
+                  );
+                }
+              }
+            }
+
+            const symbolIndex1 = parseInt(splited_s.join("") + "1", 2)!;
+            if (symbolIndex1 <= symbols.length - 1) {
+              const candinates = ruleset.getCandinates(S, symbols[symbolIndex1]);
+              if (candinates.length > 1) throw new Error();
+              else if (candinates.length === 1) {
+                const rule = candinates[0];
+                if (rule.move === "HALT") {
+                  builder.addHALT(symbol1);
+                } else {
+                  const writeSymbol = symbols.findIndex((symbol) => symbol === rule.write);
+                  const splitedSymbol = writeSymbol.toString(2).split("");
+                  const filledSymbol = new Array<string>(l - splitedSymbol.length)
+                    .fill("0")
+                    .concat(splitedSymbol);
+                  builder.add(
+                    symbol1,
+                    filledSymbol[filledSymbol.length - 1] === "0" ? symbol0 : symbol1,
+                    "L",
+                    toNewStateTLR(rule.move, rule.nextState, filledSymbol.slice(0, -1))
+                  );
+                }
+              }
+            }
+          }
+
+          // U, V -> T
+          builder
+            .state(toNewStateUV("U", S, l - 1))
+            .add(symbol0, symbol0, "R", toNewStateTLR("T", S, []))
+            .add(symbol1, symbol1, "R", toNewStateTLR("T", S, []))
+            .state(toNewStateUV("V", S, l - 1))
+            .add(symbol0, symbol0, "L", toNewStateTLR("T", S, []))
+            .add(symbol1, symbol1, "L", toNewStateTLR("T", S, []));
+          for (let s = 1; s <= l - 2; s++) {
+            builder
+              .state(toNewStateUV("U", S, s))
+              .add(symbol0, symbol0, "R", toNewStateUV("U", S, s + 1))
+              .add(symbol1, symbol1, "R", toNewStateUV("U", S, s + 1))
+              .state(toNewStateUV("V", S, s))
+              .add(symbol0, symbol0, "L", toNewStateUV("V", S, s + 1))
+              .add(symbol1, symbol1, "L", toNewStateUV("V", S, s + 1));
+          }
+        }
+
+        this.turingMachineSample = new TuringMachine(
+          symbol0,
+          builder.build(),
+          toNewStateTLR("T", initState, []),
+          acceptState === null ? null : toNewStateTLR("T", acceptState, [])
+        );
+
+        this.transformLog = {
+          l: l,
+          symbolCorrespondenceTable: symbols.map((symbol, index) => {
+            const splitedIndex = index
+              .toString(2)
+              .split("")
+              .map((str) => (str === "0" ? symbol0 : symbol1));
+            return {
+              original: symbol,
+              to: new Array<TMSymbol>(l - splitedIndex.length).fill(symbol0).concat(splitedIndex),
+            };
+          }),
+          blank: { original: blankSymbol, to: new Array(l).fill(symbol0) },
+          stateCorrespondenceTable: states.map((state) => {
+            return { original: state, to: toNewStateTLR("T", state, []) };
+          }),
+        };
+      }
+      asTuple(): {
+        stateSet: Set<TMState>;
+        symbolSet: Set<TMSymbol>;
+        blankSymbol: TMSymbol;
+        inputSymbolSet: Set<TMSymbol>;
+        ruleset: TMRuleSet;
+        initState: TMState;
+        acceptState: TMState | null;
+      } | null {
+        return this.turingMachineSample === null ? null : this.turingMachineSample.asTuple();
+      }
+      asIndependantSystem(): TuringMachine | null {
+        return this.turingMachineSample === null ? null : this.turingMachineSample.clone();
+      }
+      getTransFormLog(): TuringMachineTo2SymbolTransformLog | null {
+        return this.transformLog;
       }
     })();
   }

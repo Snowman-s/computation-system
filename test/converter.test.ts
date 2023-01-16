@@ -45,7 +45,7 @@ describe("ConverterTest", () => {
 
       expect(tmConfigBeforeExecute.tape.toString()).toMatch(/…B+AB+…/);
       expect(writeTmConfigBeforeExecute.tape.toString()).toMatch(/…B+AB+…/);
-      expect(tsConfigBeforeExecute.word.toString()).toBe("A_{0.l_1}xB_0x");
+      expect(tsConfigBeforeExecute.word.toString()).toBe("A_0xB_{0.l_1}x");
 
       while (!hierarchy.stopped()) {
         hierarchy.proceed(1);
@@ -61,7 +61,7 @@ describe("ConverterTest", () => {
       expect(tmConfig.tape.read(tmConfig.headPosition)).toBe(A);
 
       expect(writeTmConfig.tape.toString()).toMatch(/…B+AB+…/);
-      expect(tsConfig.word.toString()).toBe("A_{4.l_1}xB_4x");
+      expect(tsConfig.word.toString()).toBe("A_4xB_{4.l_1}x");
     });
   });
 
@@ -407,7 +407,7 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_{3.l_1}x" + "α_3x".repeat(3) + "B_3x");
+      expect(word?.toString()).toEqual("A_3x" + "α_3x".repeat(3) + "B_{3.l_1}x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
       expect(tmtape?.toString()).toMatch(/…A+BBBA+…/);
 
@@ -449,7 +449,7 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_{3.l_0}xB_3x");
+      expect(word?.toString()).toEqual("A_3xB_{3.l_0}x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
       expect(tmtape?.toString()).toMatch(/…B+BB+…/);
     });
@@ -483,7 +483,7 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_{3.l_1}x" + "α_3x".repeat(7) + "B_3x");
+      expect(word?.toString()).toEqual("A_3x" + "α_3x".repeat(7) + "B_{3.l_1}x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
       expect(tmtape?.toString()).toMatch(/…A+BBBBA+…/);
     });
@@ -853,6 +853,39 @@ describe("ConverterTest", () => {
           })
         ).toBeNull();
       });
+    });
+  });
+
+  describe("TuringMachine to 2-symbol", () => {
+    test("Positive", () => {
+      const element = Converter.turingMachineTo2Symbol();
+
+      const [A, B, S] = TMSymbolFrom("A", "B", "S");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R", q2)
+        .state(q2)
+        .add(B, S, "L")
+        .add(S, A, "R", qf)
+        .build();
+
+      const virtualTM = new TuringMachine(S, ruleset, q1, qf);
+
+      element.bind(virtualTM.asTuple());
+
+      const symbol2TM = element.asIndependantSystem()!;
+
+      //A'BSB, q1 -> BB'SB, q2 -> S'SSSB, q2 -> AS'SSB, qf
+      symbol2TM.start(element.interpretInput([[A, B, S, B], 0]));
+
+      while (!symbol2TM.isAccepted()) {
+        symbol2TM.proceed(1);
+      }
+      expect(element.interpretConfigration(symbol2TM.getConfiguration())?.tape.toString()).toMatch(
+        /S+ASSSBS+/
+      );
     });
   });
 });

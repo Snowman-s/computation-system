@@ -159,7 +159,7 @@ const table = transformHierarchy.getTransFormLogOf(0)!;
    (ROGOZHIN, Yurii. Small universal Turing machines. Theoretical Computer Science, 1996, 168.2: 215-240.)
 
 - "Write-First Turing Machine with 2-symbol" simulates "Turing Machine with 2-symbol"
-- "Tag System" simulates "Write-First Turing Machine with 2-symbol"
+- "Tag System" simulates "Write-First Turing Machine with 2-symbol"  
   (COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.)
 
 ## Documents
