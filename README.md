@@ -137,7 +137,7 @@ console.log(configOfTM.tape.toString());
 
 //Get the log-object showing how the transformation was performed.
 //The format of that table depends on the conversion method. See the code of "converter.ts".
-//!WARN! This feature is currently particularly unstable and can easily change (e.g., method names), so use with caution.
+//This feature WAS currently particularly unstable and could easily change, but now it seems to be fixed.
 const table = transformHierarchy.getTransFormLogOf(0)!;
 ```
 
@@ -155,12 +155,15 @@ const table = transformHierarchy.getTransFormLogOf(0)!;
 
 ### Convert (Beta)
 
-- "Turing Machine" simulates "2-Tag System"  
-   (ROGOZHIN, Yurii. Small universal Turing machines. Theoretical Computer Science, 1996, 168.2: 215-240.)
+- "Turing Machine with 2-symbol" simulates "Turing Machine"
+  (SHANNON, Claude E. A universal Turing machine with two internal states. Automata studies, 1956, 34: 157-165.)
 
 - "Write-First Turing Machine with 2-symbol" simulates "Turing Machine with 2-symbol"
 - "Tag System" simulates "Write-First Turing Machine with 2-symbol"  
   (COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.)
+
+- "Turing Machine" simulates "2-Tag System"  
+  (ROGOZHIN, Yurii. Small universal Turing machines. Theoretical Computer Science, 1996, 168.2: 215-240.)
 
 ## Documents
 
