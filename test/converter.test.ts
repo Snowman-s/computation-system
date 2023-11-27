@@ -119,18 +119,40 @@ describe("ConverterTest", () => {
 
       let table = transformHierarchy.getTransFormLogOf(0)!.transformTable;
 
-      //その解釈結果が何の文字か？
-      expect(table[0].letter.value).toBe("A");
-      //その文字は何を出力するか？
-      expect((table[1].output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
-        "A",
-      ]);
-      //その文字はどう表現されるか？
-      expect(table[1].charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A", "A"]);
-      //その文字の出力はどう表現されるか？
-      expect(table[1].outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A"]);
-      //その文字の出力はどう表現されるか？ (STOP命令)
-      expect(table[2].outRepresent.map((symbol) => symbol.value)).toEqual(["Q", "Q"]);
+      for (let row of table) {
+        switch (row.letter.value) {
+          case "A":
+            //その文字は何を出力するか？
+            expect((row.output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
+              "B", "H"
+            ]);
+            //その文字はどう表現されるか？
+            expect(row.charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A"]);
+            //その文字の出力はどう表現されるか？
+            expect(row.outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A", "A", "A", "A", "A", "A", "A", "F", "A"]);
+            break;
+          case "B":
+            //その文字は何を出力するか？
+            expect((row.output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
+              "A"
+            ]);
+            //その文字はどう表現されるか？
+            expect(row.charRepresent.map((symbol) => symbol.value)).toEqual(["A"]);
+            //その文字の出力はどう表現されるか？
+            expect(row.outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A", "A", "A"]);
+            break;
+          case "H":
+            //その文字は何を出力するか？
+            expect(row.output).toEqual("STOP");
+            //その文字はどう表現されるか？
+            expect(row.charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A", "A", "A", "A"]);
+            //その文字の出力はどう表現されるか？ (STOP命令)
+            expect(row.outRepresent.map((symbol) => symbol.value)).toEqual(["Q", "Q"]);
+            break;
+          default:
+            fail();
+        }
+      }
     });
     test("Monkey", () => {
       const [A, B, H] = TagSystemLetterFrom("A", "B", "H");
