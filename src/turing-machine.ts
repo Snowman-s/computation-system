@@ -308,12 +308,12 @@ export class TMTape {
     this.maxIndex = maxIndex;
   }
 
-  public static create(symbols: TMSymbol[], blank: TMSymbol) {
+  public static create(symbols: TMSymbol[], blank: TMSymbol, startOn = 0) {
     const tapeData = new Map<number, TMSymbol>();
     symbols.forEach((symbol, i) => {
       tapeData.set(i, symbol);
     });
-    return new TMTape(tapeData, blank, 0, tapeData.size - 1);
+    return new TMTape(tapeData, blank, startOn, startOn + tapeData.size - 1);
   }
 
   public read(n: number): TMSymbol {
@@ -467,11 +467,11 @@ export class TuringMachine implements ComputationSystem {
 
       if (candinateRules.length > 1) {
         throw new Error(
-          `Many rules corresponding to {${this.nowState}, ${readSymbol}} are defined.`
+          `Many rules corresponding to {${this.nowState.value}, ${readSymbol.value}} are defined.`
         );
       } else if (candinateRules.length == 0) {
         throw new Error(
-          `The rule corresponding to {${this.nowState}, ${readSymbol}} is not defined.`
+          `The rule corresponding to {${this.nowState.value}, ${readSymbol.value}} is not defined.`
         );
       }
 

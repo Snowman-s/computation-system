@@ -45,7 +45,7 @@ describe("ConverterTest", () => {
 
       expect(tmConfigBeforeExecute.tape.toString()).toMatch(/…B+AB+…/);
       expect(writeTmConfigBeforeExecute.tape.toString()).toMatch(/…B+AB+…/);
-      expect(tsConfigBeforeExecute.word.toString()).toBe("A_{0.l_1}xB_0x");
+      expect(tsConfigBeforeExecute.word.toString()).toBe("A_0xB_{0.l_1}x");
 
       while (!hierarchy.stopped()) {
         hierarchy.proceed(1);
@@ -61,7 +61,7 @@ describe("ConverterTest", () => {
       expect(tmConfig.tape.read(tmConfig.headPosition)).toBe(A);
 
       expect(writeTmConfig.tape.toString()).toMatch(/…B+AB+…/);
-      expect(tsConfig.word.toString()).toBe("A_{4.l_1}xB_4x");
+      expect(tsConfig.word.toString()).toBe("A_4xB_{4.l_1}x");
     });
   });
 
@@ -119,18 +119,40 @@ describe("ConverterTest", () => {
 
       let table = transformHierarchy.getTransFormLogOf(0)!.transformTable;
 
-      //その解釈結果が何の文字か？
-      expect(table[0].letter.value).toBe("A");
-      //その文字は何を出力するか？
-      expect((table[1].output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
-        "A",
-      ]);
-      //その文字はどう表現されるか？
-      expect(table[1].charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A", "A"]);
-      //その文字の出力はどう表現されるか？
-      expect(table[1].outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A"]);
-      //その文字の出力はどう表現されるか？ (STOP命令)
-      expect(table[2].outRepresent.map((symbol) => symbol.value)).toEqual(["Q", "Q"]);
+      for (let row of table) {
+        switch (row.letter.value) {
+          case "A":
+            //その文字は何を出力するか？
+            expect((row.output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
+              "B", "H"
+            ]);
+            //その文字はどう表現されるか？
+            expect(row.charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A"]);
+            //その文字の出力はどう表現されるか？
+            expect(row.outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A", "A", "A", "A", "A", "A", "A", "F", "A"]);
+            break;
+          case "B":
+            //その文字は何を出力するか？
+            expect((row.output as TagSystemWord).asLetters().map((letter) => letter.value)).toEqual([
+              "A"
+            ]);
+            //その文字はどう表現されるか？
+            expect(row.charRepresent.map((symbol) => symbol.value)).toEqual(["A"]);
+            //その文字の出力はどう表現されるか？
+            expect(row.outRepresent.map((symbol) => symbol.value)).toEqual(["F", "F", "A", "A", "A"]);
+            break;
+          case "H":
+            //その文字は何を出力するか？
+            expect(row.output).toEqual("STOP");
+            //その文字はどう表現されるか？
+            expect(row.charRepresent.map((symbol) => symbol.value)).toEqual(["A", "A", "A", "A", "A", "A"]);
+            //その文字の出力はどう表現されるか？ (STOP命令)
+            expect(row.outRepresent.map((symbol) => symbol.value)).toEqual(["Q", "Q"]);
+            break;
+          default:
+            fail();
+        }
+      }
     });
     test("Monkey", () => {
       const [A, B, H] = TagSystemLetterFrom("A", "B", "H");
@@ -407,7 +429,7 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_{3.l_1}x" + "α_3x".repeat(3) + "B_3x");
+      expect(word?.toString()).toEqual("A_3x" + "α_3x".repeat(3) + "B_{3.l_1}x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
       expect(tmtape?.toString()).toMatch(/…A+BBBA+…/);
 
@@ -449,7 +471,7 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_{3.l_0}xB_3x");
+      expect(word?.toString()).toEqual("A_3xB_{3.l_0}x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
       expect(tmtape?.toString()).toMatch(/…B+BB+…/);
     });
@@ -483,7 +505,7 @@ describe("ConverterTest", () => {
       }
 
       const word = hierarchy.getConfiguration(1)?.word;
-      expect(word?.toString()).toEqual("A_{3.l_1}x" + "α_3x".repeat(7) + "B_3x");
+      expect(word?.toString()).toEqual("A_3x" + "α_3x".repeat(7) + "B_{3.l_1}x");
       const tmtape = hierarchy.getConfiguration(0)?.tape;
       expect(tmtape?.toString()).toMatch(/…A+BBBBA+…/);
     });
@@ -853,6 +875,39 @@ describe("ConverterTest", () => {
           })
         ).toBeNull();
       });
+    });
+  });
+
+  describe("TuringMachine to 2-symbol", () => {
+    test("Positive", () => {
+      const element = Converter.turingMachineTo2Symbol();
+
+      const [A, B, S] = TMSymbolFrom("A", "B", "S");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R", q2)
+        .state(q2)
+        .add(B, S, "L")
+        .add(S, A, "R", qf)
+        .build();
+
+      const virtualTM = new TuringMachine(S, ruleset, q1, qf);
+
+      element.bind(virtualTM.asTuple());
+
+      const symbol2TM = element.asIndependantSystem()!;
+
+      //A'BSB, q1 -> BB'SB, q2 -> S'SSSB, q2 -> AS'SSB, qf
+      symbol2TM.start(element.interpretInput([[A, B, S, B], 0]));
+
+      while (!symbol2TM.isAccepted()) {
+        symbol2TM.proceed(1);
+      }
+      expect(element.interpretConfigration(symbol2TM.getConfiguration())?.tape.toString()).toMatch(
+        /S+ASSSBS+/
+      );
     });
   });
 });
