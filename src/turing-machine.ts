@@ -563,7 +563,7 @@ export class TuringMachine implements ComputationSystem {
    * - tape - Symbols on tape for this machine.
    * - headPosition - Relative position of this machine's current head.
    *
-   * @returns Current status of this machine if {@link TuringMachine.start} was called, false otherwise.
+   * @returns Current status of this machine if {@link TuringMachine.start} was called, null otherwise.
    */
   public getConfiguration(): TMConfiguration | null {
     if (this.tape === null || this.nowState === null) {
