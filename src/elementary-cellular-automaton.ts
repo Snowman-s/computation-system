@@ -98,6 +98,9 @@ class ECACells {
       readCellAt(index: number) {
         return cloned.readCellAt(index);
       }
+      toString() {
+        return cloned.toString();
+      }
     })
   }
 
