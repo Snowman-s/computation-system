@@ -60,3 +60,6 @@ export type TuringMachineTo2SymbolTransformLog = {
   symbolCorrespondenceTable: { original: TMSymbol; to: TMSymbol[] }[];
   stateCorrespondenceTable: { original: TMState; to: TMState }[];
 };
+
+export type TuringMachine2SymbolToMinskyRegisterMachineTransformLog = {
+}
