@@ -5,6 +5,7 @@ import {
   TMRuleOutput,
   TMState,
   TMSymbol,
+  MinskyRegisterMachineInstruction,
 } from "./computation-system";
 
 export type Tag2SystemToTuringMachine218TransformLog = {
@@ -62,4 +63,11 @@ export type TuringMachineTo2SymbolTransformLog = {
 };
 
 export type TuringMachine2SymbolToMinskyRegisterMachineTransformLog = {
+  states: Map<TMState, {
+    stateNumber: number;
+    instructionNumber: number;
+  }>;
+  symbol0: TMSymbol;
+  symbol1: TMSymbol;
+  programs: MinskyRegisterMachineInstruction[];
 }

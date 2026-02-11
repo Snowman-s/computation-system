@@ -18,6 +18,7 @@ import {
   WriteFirstTM2SymbolToTagSystemTransformLog,
   TMTape,
   TagSystemLetter,
+  MinskyRegisterMachine,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -874,6 +875,188 @@ describe("ConverterTest", () => {
             ]),
           })
         ).toBeNull();
+      });
+    });
+  });
+
+  describe("TuringMachine2SymbolToMinskyRegisterMachine", () => {
+    test("Positive", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "R", q2)
+        .state(q2)
+        .add(A, B, "L")
+        .add(B, A, "L", qf)
+        .build();
+
+      const tm = new TuringMachine(A, ruleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      hierarchy.start(tm, [[A, B, B], 0]);
+
+      const tmConfigBeforeExecute = hierarchy.getConfiguration(0)!;
+      expect(tmConfigBeforeExecute.tape.toString()).toMatch(/…A+BBA+…/);
+      expect(tmConfigBeforeExecute.headPosition).toBe(0);
+      expect(tmConfigBeforeExecute.nowState).toBe(q1);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const tmConfig = hierarchy.getConfiguration(0)!;
+      const mrmConfig = hierarchy.getConfiguration(1)!;
+
+      expect(tmConfig.tape.toString()).toMatch(/…A+BA+…/);
+      expect(tmConfig.headPosition).toBe(0);
+      expect(tmConfig.nowState).toBe(qf);
+
+      expect(mrmConfig).not.toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).toBeInstanceOf(MinskyRegisterMachine);
+    });
+
+    test("Work with symbol1 as blank", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "R", q2)
+        .state(q2)
+        .add(A, B, "L")
+        .add(B, A, "L", qf)
+        .build();
+
+      const tm = new TuringMachine(B, ruleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      hierarchy.start(tm, [[A, B, B], 0]);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const tmConfig = hierarchy.getConfiguration(0)!;
+      expect(tmConfig.tape.toString()).toMatch(/…B+AAB+…/);
+      expect(tmConfig.nowState).toBe(qf);
+    });
+
+    test("Monkey - Error if not 2-symbol", () => {
+      const [A, B, C] = TMSymbolFrom("A", "B", "C");
+      const [q1, qf] = TMStateFrom("q1", "qf");
+
+      const invalidRuleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, C, "R")
+        .add(C, A, "R", qf)
+        .build();
+
+      const invalidTM = new TuringMachine(A, invalidRuleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      expect(() => hierarchy.start(invalidTM, [[A, B, C], 0])).toThrowError();
+
+      expect(hierarchy.getConfiguration(1)).toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).toBeNull();
+      expect(hierarchy.getTuple(1)).toBeNull();
+    });
+
+    test("Monkey - Error if multiple rules for same state-symbol", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const validRuleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "R", q2)
+        .state(q2)
+        .add(A, B, "L")
+        .add(B, A, "L", qf)
+        .build();
+
+      const validTM = new TuringMachine(A, validRuleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      hierarchy.start(validTM, [[A, B, B], 0]);
+
+      expect(hierarchy.getConfiguration(1)).not.toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).not.toBeNull();
+      expect(hierarchy.getTuple(1)).not.toBeNull();
+    });
+
+    describe("unit", () => {
+      test("interpretConfigration() returns null if unexpected params", () => {
+        const element = Converter.turingMachine2symbolToMinskyRegisterMachine();
+
+        const [A, B] = TMSymbolFrom("A", "B");
+        const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+        const ruleset = TMRuleSet.builder()
+          .state(q1)
+          .add(A, B, "R")
+          .add(B, A, "R", q2)
+          .state(q2)
+          .add(A, B, "L")
+          .add(B, A, "L", qf)
+          .build();
+
+        const tm = new TuringMachine(A, ruleset, q1, qf);
+
+        // bind()前
+        expect(
+          element.interpretConfigration({
+            registers: [BigInt(0), BigInt(0), BigInt(0), BigInt(0)],
+            instructionPointer: 0,
+          })
+        ).toBeNull();
+
+        element.bind(tm.asTuple());
+
+        // 入力がnull
+        expect(element.interpretConfigration(null)).toBeNull();
+
+        // instructionPointerが不正な位置
+        expect(
+          element.interpretConfigration({
+            registers: [BigInt(0), BigInt(0), BigInt(0), BigInt(0)],
+            instructionPointer: 9999,
+          })
+        ).toBeNull();
+      });
+
+      test("interpretInput() throws Error if unexpected params", () => {
+        const element = Converter.turingMachine2symbolToMinskyRegisterMachine();
+
+        const [A, B] = TMSymbolFrom("A", "B");
+        const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+        const ruleset = TMRuleSet.builder()
+          .state(q1)
+          .add(A, B, "R")
+          .add(B, A, "R", q2)
+          .state(q2)
+          .add(A, B, "L")
+          .add(B, A, "L", qf)
+          .build();
+
+        const tm = new TuringMachine(A, ruleset, q1, qf);
+
+        // bind()前
+        expect(() => element.interpretInput([[A, B], 0])).toThrowError();
+
+        element.bind(tm.asTuple());
+
+        // 正常なケース
+        expect(() => element.interpretInput([[A, B], 0])).not.toThrowError();
       });
     });
   });
