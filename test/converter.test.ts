@@ -19,6 +19,8 @@ import {
   TMTape,
   TagSystemLetter,
   MinskyRegisterMachine,
+  Fractran,
+  FractranFraction,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -1091,6 +1093,150 @@ describe("ConverterTest", () => {
       expect(element.interpretConfigration(symbol2TM.getConfiguration())?.tape.toString()).toMatch(
         /S+ASSSBS+/
       );
+    });
+  });
+
+  describe("MinskyRegisterMachineToFractran", () => {
+    test("Positive - INC instruction", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      const program = [
+        { type: "INC" as const, register: 0, next: 1 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(2, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(5), BigInt(3)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(6), BigInt(3)]);
+      expect(interpretedConfig!.instructionPointer).toBe(1);
+    });
+
+    test("Positive - DEC instruction (non-zero)", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      const program = [
+        { type: "DEC" as const, register: 0, nextIfNonZero: 1, nextIfZero: 2 },
+        { type: "INC" as const, register: 1, next: 2 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(2, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(5), BigInt(0)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(4), BigInt(1)]);
+      expect(interpretedConfig!.instructionPointer).toBe(2);
+    });
+
+    test("Positive - DEC instruction (zero)", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      const program = [
+        { type: "DEC" as const, register: 0, nextIfNonZero: 1, nextIfZero: 2 },
+        { type: "INC" as const, register: 1, next: 2 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(2, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(0), BigInt(10)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(0), BigInt(10)]);
+      expect(interpretedConfig!.instructionPointer).toBe(2);
+    });
+
+    test("Complex program - addition", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      // Program: R2 = R0 + R1
+      // while R0 > 0: R0--, R2++
+      // while R1 > 0: R1--, R2++
+      const program = [
+        { type: "DEC" as const, register: 0, nextIfNonZero: 1, nextIfZero: 2 },
+        { type: "INC" as const, register: 2, next: 0 },
+        { type: "DEC" as const, register: 1, nextIfNonZero: 3, nextIfZero: 4 },
+        { type: "INC" as const, register: 2, next: 2 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(3, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(3), BigInt(5), BigInt(0)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(0), BigInt(0), BigInt(8)]);
+      expect(interpretedConfig!.instructionPointer).toBe(4);
+    });
+
+    describe("unit", () => {
+      test("interpretConfigration() returns null if unexpected params", () => {
+        const element = Converter.minskyRegisterMachineToFractran();
+
+        const program = [{ type: "HALT" as const }];
+        const mrm = new MinskyRegisterMachine(1, program);
+
+        element.bind(mrm.asTuple());
+
+        // Configuration with invalid instruction prime
+        const fractran = new Fractran([FractranFraction.fromFractranNumbers(
+          { factors: [{ base: 999, exponent: 1 }] },
+          { factors: [{ base: 1, exponent: 1 }] }
+        )]);
+        fractran.start({ factors: [{ base: 999, exponent: 1 }] });
+
+        expect(element.interpretConfigration(fractran.getConfiguration())).toBeNull();
+      });
+
+      test("interpretInput() works correctly", () => {
+        const element = Converter.minskyRegisterMachineToFractran();
+
+        const program = [{ type: "HALT" as const }];
+        const mrm = new MinskyRegisterMachine(2, program);
+
+        element.bind(mrm.asTuple());
+
+        const input = element.interpretInput({ registers: [BigInt(3), BigInt(5)] });
+
+        // Should have factors for both registers and the initial instruction
+        expect(input.factors.length).toBeGreaterThanOrEqual(3);
+        
+        // Sum of exponents should be 3 + 5 + 1 (for instruction pointer)
+        const totalExponent = input.factors.reduce((sum, f) => sum + f.exponent, 0);
+        expect(totalExponent).toBe(9);
+      });
     });
   });
 });

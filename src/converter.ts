@@ -1,31 +1,13 @@
 import {
   TagSystem,
-  TagSystemConfiguration,
-  TagSystemLetter,
-  TagSystemLetterFrom,
-  TagSystemRuleSet,
-  TagSystemWord,
 } from "./tag-system";
 import {
-  TMConfiguration,
-  TMRuleOutput,
-  TMRuleSet,
-  TMState,
-  TMStateFrom,
-  TMSymbol,
-  TMSymbolFrom,
-  TMTape,
   TuringMachine,
 } from "./turing-machine";
 import {
   ComputationSystem,
+  Fractran,
   MinskyRegisterMachine,
-  MinskyRegisterMachineConfiguration,
-  MinskyRegisterMachineInstruction,
-  MinskyRegisterMachineTuple,
-  WriteFirstTMRule,
-  WriteFirstTMRuleOutput,
-  WriteFirstTMRuleSet,
   WriteFirstTuringMachine,
 } from "./computation-system";
 import {
@@ -34,12 +16,14 @@ import {
   TuringMachine2SymbolToWriteFirstTuringMachineTransformLog,
   TuringMachineTo2SymbolTransformLog,
   TuringMachine2SymbolToMinskyRegisterMachineTransformLog,
+  MinskyRegisterMachineToFractranTransformLog,
 } from "./transform-log-types";
 import { Tag2SystemToTuringMachine218TransformElement } from "./converters/tag2-system-to-turing-machine-218";
 import { TuringMachine2SymbolToWriteFirstTuringMachineTransformElement } from "./converters/turing-machine-2symbol-to-write-first-turing-machine";
 import { WriteFirstTM2SymbolToTagSystemTransformElement } from "./converters/write-first-tm-2symbol-to-tag-system";
 import { TuringMachineTo2SymbolTransformElement } from "./converters/turing-machine-to-2symbol";
 import { TuringMachine2SymbolToMinskyRegisterMachineTransformElement } from "./converters/turing-machine-2symbol-to-minsky-register-machine";
+import { MinskyRegisterMachineToFractranTransformElement } from "./converters/minsky-register-machine-to-fractran";
 
 export class Converter {
   /* istanbul ignore next */
@@ -94,6 +78,14 @@ export class Converter {
     TuringMachine2SymbolToMinskyRegisterMachineTransformLog
   > {
     return new TuringMachine2SymbolToMinskyRegisterMachineTransformElement();
+  }
+
+  public static minskyRegisterMachineToFractran(): ITransformElement<
+    MinskyRegisterMachine,
+    Fractran,
+    MinskyRegisterMachineToFractranTransformLog
+  > {
+    return new MinskyRegisterMachineToFractranTransformElement();
   }
 }
 

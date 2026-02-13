@@ -25,6 +25,9 @@ function multiplyFractranNumbers(a: FractranNumber, b: FractranNumber): Fractran
     factorMap.set(factor.base, (factorMap.get(factor.base) || 0) + factor.exponent);
   }
   for (const [base, exponent] of factorMap.entries()) {
+    if (factorMap.size > 1 && base === 1) {
+      continue; // Skip base 1 if there are other factors
+    }
     result.factors.push({ base, exponent });
   }
   return result;
@@ -64,13 +67,13 @@ export class FractranFraction {
   public numerator: FractranNumber;
   public denominator: FractranNumber;
 
-  static fromNumbers(numerator: number, denominator: number): FractranFraction {
+  public static fromNumbers(numerator: number, denominator: number): FractranFraction {
     return FractranFraction.fromFractranNumbers(
       toFractranNumber(numerator),
       toFractranNumber(denominator)
     );
   }
-  static fromFractranNumbers(numerator: FractranNumber, denominator: FractranNumber): FractranFraction {
+  public static fromFractranNumbers(numerator: FractranNumber, denominator: FractranNumber): FractranFraction {
     return new FractranFraction(numerator, denominator);
   }
 
@@ -147,6 +150,24 @@ export function toFractranNumber(n: number): FractranNumber {
   return factors;
 }
 
+export function fractranNumberEquals(a: FractranNumber, b: FractranNumber): boolean {
+  if (a.factors.length !== b.factors.length) {
+    return false;
+  }
+  const factorMap: Map<number, number> = new Map();
+  for (const factor of a.factors) {
+    factorMap.set(factor.base, factor.exponent);
+  }
+  for (const factor of b.factors) {
+    const exp = factorMap.get(factor.base);
+    factorMap.delete(factor.base);
+    if (exp === undefined || exp !== factor.exponent) {
+      return false;
+    }
+  }
+
+  return factorMap.size === 0;
+}
 
 export class Fractran implements ComputationSystem {
   program: readonly FractranFraction[];
