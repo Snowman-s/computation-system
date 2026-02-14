@@ -1,4 +1,4 @@
-import { Fractran, FractranConfiguration, FractranFraction, FractranNumber, FractranTuple, ITransformElement, MinskyRegisterMachine, MinskyRegisterMachineConfiguration, MinskyRegisterMachineTuple, toFractranNumber } from "../computation-system";
+import { Fractran, FractranConfiguration, FractranFraction, FractranNumber, FractranTuple, ITransformElement, MinskyRegisterMachine, MinskyRegisterMachineConfiguration, MinskyRegisterMachineTuple } from "../computation-system";
 import { MinskyRegisterMachineToFractranTransformLog } from "../transform-log-types";
 
 export class MinskyRegisterMachineToFractranTransformElement
@@ -49,11 +49,16 @@ export class MinskyRegisterMachineToFractranTransformElement
     }
 
     return {
-      factors: virtual.registers.map((value, index) => ({
-        base: this.transformLog!.primeCorrespondenceTable.find(item =>
-          item.type === "register" && item.registerIndex === index)!.prime!,
-        exponent: Number(value),
-      })).concat([{ 
+      factors: virtual.registers.map((value, index) => {
+        if (value > Number.MAX_SAFE_INTEGER) {
+          throw new Error(`Register ${index} value exceeds safe integer range`);
+        }
+        return {
+          base: this.transformLog!.primeCorrespondenceTable.find(item =>
+            item.type === "register" && item.registerIndex === index)!.prime!,
+          exponent: Number(value),
+        };
+      }).concat([{ 
         base: this.transformLog!.primeCorrespondenceTable.find(item => item.type === "instruction" && item.instructionIndex === 0)!.prime!, 
         exponent: 1 
       }]),
@@ -64,7 +69,7 @@ export class MinskyRegisterMachineToFractranTransformElement
       primeCorrespondenceTable: []
     };
 
-    let primes = this._getPrimes(system.numberOfRegisters + system.program.length);
+    let primes = this.getPrimes(system.numberOfRegisters + system.program.length);
 
     let registers: {
       readonly type: "register";
@@ -159,7 +164,7 @@ export class MinskyRegisterMachineToFractranTransformElement
     return this.transformLog;
   }
 
-  _getPrimes(amount: number): number[] {
+  private getPrimes(amount: number): number[] {
     let knownPrimes: number[] = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97];
 
     if (amount < knownPrimes.length) {

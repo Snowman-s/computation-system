@@ -14,7 +14,6 @@ import {
 } from "../computation-system";
 import { ITransformElement } from "../converter";
 import { TuringMachine2SymbolToMinskyRegisterMachineTransformLog } from "../transform-log-types";
-import { assert } from "console";
 
 export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
   implements
@@ -61,7 +60,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
     // レジスタ
     let [A, M, N, Z] = [0, 1, 2, 3];
 
-    let shouldResolveAfterAllStates = [];
+    let shouldResolveAfterAllStates: (() => void)[] = [];
 
     for(let s of stateList) {
       const startingInstructionNumber = instructionNumber();
@@ -74,7 +73,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
 
       // FIXME: to be filled later
       // 0 -> 1 の順
-      let firstProgram = { type: "DEC" as const, register: A, nextIfNonZero: -1, nextIfZero: instructionNumber(1) }
+      let firstProgram = { type: "DEC" as const, register: A, nextIfNonZero: -1, nextIfZero: instructionNumber(1) };
       programs.push(firstProgram);
 
       for(let symbol of [symbol0, symbol1]) {
@@ -127,9 +126,11 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
         // 次の状態へ移動 (終わり)
         shouldResolveAfterAllStates.push(() => {
           let nextStateInfo = states.get(rule.nextState);
-          assert(nextStateInfo !== undefined);
-          decInstruction.nextIfZero = nextStateInfo!.instructionNumber;
-          incInstruction.next = nextStateInfo!.instructionNumber;
+          if (nextStateInfo === undefined) {
+            throw new Error(`Next state ${rule.nextState.value} is not defined.`);
+          }
+          decInstruction.nextIfZero = nextStateInfo.instructionNumber;
+          incInstruction.next = nextStateInfo.instructionNumber;
         });
       }
     }

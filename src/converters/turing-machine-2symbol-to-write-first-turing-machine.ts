@@ -1,7 +1,6 @@
 import {
   TMConfiguration,
   TMRuleOutput,
-  TMRuleSet,
   TMState,
   TMStateFrom,
   TMSymbol,

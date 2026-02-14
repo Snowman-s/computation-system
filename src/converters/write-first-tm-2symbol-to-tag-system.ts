@@ -13,7 +13,6 @@ import {
 } from "../turing-machine";
 import {
   WriteFirstTMRuleOutput,
-  WriteFirstTMRuleSet,
   WriteFirstTuringMachine,
 } from "../write-first-turing-machine";
 import { ITransformElement, SystemTuple } from "../converter";
