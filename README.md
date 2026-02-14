@@ -152,18 +152,28 @@ const table = transformHierarchy.getTransFormLogOf(0)!;
 - Turing Machine
 - Tag System
 - Write-First Turing Machine (Usually used in the middle of a conversion of a computational models by a _Converter_.)
+- Minsky Register Machine
+- FRACTRAN
+- Elementary Cellular Automaton
 
 ### Convert (Beta)
 
 - "Turing Machine with 2-symbol" simulates "Turing Machine"
-  (SHANNON, Claude E. A universal Turing machine with two internal states. Automata studies, 1956, 34: 157-165.)
+  - SHANNON, Claude E. A universal Turing machine with two internal states. Automata studies, 1956, 34: 157-165.
 
 - "Write-First Turing Machine with 2-symbol" simulates "Turing Machine with 2-symbol"
-- "Tag System" simulates "Write-First Turing Machine with 2-symbol"  
-  (COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.)
 
-- "Turing Machine" simulates "2-Tag System"  
-  (ROGOZHIN, Yurii. Small universal Turing machines. Theoretical Computer Science, 1996, 168.2: 215-240.)
+- "Tag System" simulates "Write-First Turing Machine with 2-symbol"
+  - COCKE, John; MINSKY, Marvin. Universality of tag systems with P= 2. Journal of the ACM (JACM), 1964, 11.1: 15-20.
+
+- "Turing Machine" simulates "2-Tag System"
+  - ROGOZHIN, Yurii. Small universal Turing machines. Theoretical Computer Science, 1996, 168.2: 215-240.
+
+- "Minsky Register Machine" simulates "Turing Machine with 2-symbol"
+  - MINSKY, Marvin L. Computation: Finite and Infinite Machines. Prentice-Hall, 1967.
+
+- "FRACTRAN" simulates "Minsky Register Machine"
+  - CONWAY, John H. Fractran: A simple universal programming language for arithmetic. In: Open problems in Communication and Computation. New York, NY: Springer New York, 1987. p. 4-26.
 
 ## Documents
 
