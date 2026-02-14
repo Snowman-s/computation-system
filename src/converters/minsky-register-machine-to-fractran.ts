@@ -48,8 +48,8 @@ export class MinskyRegisterMachineToFractranTransformElement
       throw new Error("program is not bound.");
     }
 
-    return {
-      factors: virtual.registers.map((value, index) => {
+    return new FractranNumber(
+      virtual.registers.map((value, index) => {
         if (value > Number.MAX_SAFE_INTEGER) {
           throw new Error(`Register ${index} value exceeds safe integer range`);
         }
@@ -61,8 +61,8 @@ export class MinskyRegisterMachineToFractranTransformElement
       }).concat([{ 
         base: this.transformLog!.primeCorrespondenceTable.find(item => item.type === "instruction" && item.instructionIndex === 0)!.prime!, 
         exponent: 1 
-      }]),
-    }
+      }])
+    );
   }
   bind(system: MinskyRegisterMachineTuple): void {
     let log: MinskyRegisterMachineToFractranTransformLog = {
@@ -93,37 +93,33 @@ export class MinskyRegisterMachineToFractranTransformElement
       switch (instruction.type) {
         case "INC":
           instructionFracs.push(FractranFraction.fromFractranNumbers(
-            {
-              factors: [
-                {
-                  base: primes[instruction.register],
-                  exponent: 1,
-                },
-                {
-                  base: primes[system.numberOfRegisters + instruction.next],
-                  exponent: 1,
-                }
-              ],
-            },
-            {
-              factors: [{
-                base: primes[system.numberOfRegisters + index],
+            new FractranNumber([
+              {
+                base: primes[instruction.register],
                 exponent: 1,
-              }],
-            },
+              },
+              {
+                base: primes[system.numberOfRegisters + instruction.next],
+                exponent: 1,
+              }
+            ]),
+            new FractranNumber([{
+              base: primes[system.numberOfRegisters + index],
+              exponent: 1,
+            }])
           ));
           break;
         case "DEC":
           instructionFracs.push(FractranFraction.fromFractranNumbers(
-            { factors: [{ base: primes[system.numberOfRegisters + instruction.nextIfNonZero], exponent: 1 }] },
-            { factors: [
+            new FractranNumber([{ base: primes[system.numberOfRegisters + instruction.nextIfNonZero], exponent: 1 }]),
+            new FractranNumber([
               { base: primes[system.numberOfRegisters + index], exponent: 1 },
               { base: primes[instruction.register], exponent: 1 }
-            ] },
+            ])
           ));
           instructionFracs.push(FractranFraction.fromFractranNumbers(
-            { factors: [ { base: primes[system.numberOfRegisters + instruction.nextIfZero], exponent: 1 } ] },
-            { factors: [{ base: primes[system.numberOfRegisters + index], exponent: 1 }]},
+            new FractranNumber([{ base: primes[system.numberOfRegisters + instruction.nextIfZero], exponent: 1 }]),
+            new FractranNumber([{ base: primes[system.numberOfRegisters + index], exponent: 1 }])
           )); 
           break;
         case "HALT":

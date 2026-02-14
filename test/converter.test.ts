@@ -21,6 +21,7 @@ import {
   MinskyRegisterMachine,
   Fractran,
   FractranFraction,
+  FractranNumber,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -1212,10 +1213,10 @@ describe("ConverterTest", () => {
 
         // Configuration with invalid instruction prime
         const fractran = new Fractran([FractranFraction.fromFractranNumbers(
-          { factors: [{ base: 999, exponent: 1 }] },
-          { factors: [{ base: 1, exponent: 1 }] }
+          new FractranNumber([{ base: 999, exponent: 1 }]),
+          new FractranNumber([{ base: 1, exponent: 1 }])
         )]);
-        fractran.start({ factors: [{ base: 999, exponent: 1 }] });
+        fractran.start(new FractranNumber([{ base: 999, exponent: 1 }]));
 
         expect(element.interpretConfigration(fractran.getConfiguration())).toBeNull();
       });

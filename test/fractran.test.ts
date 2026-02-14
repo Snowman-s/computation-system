@@ -1,18 +1,17 @@
 import { 
   Fractran, 
   FractranFraction, 
-  toFractranNumber,
   FractranNumber
 } from "../src/fractran";
 
 describe("factorizeToFractranNumber", () => {
   it("should factorize prime numbers", () => {
-    const result = toFractranNumber(2);
+    const result = FractranNumber.fromNumber(2);
     expect(result.factors).toEqual([{ base: 2, exponent: 1 }]);
   });
 
   it("should factorize composite numbers", () => {
-    const result = toFractranNumber(6);
+    const result = FractranNumber.fromNumber(6);
     expect(result.factors).toEqual([
       { base: 2, exponent: 1 },
       { base: 3, exponent: 1 }
@@ -20,12 +19,12 @@ describe("factorizeToFractranNumber", () => {
   });
 
   it("should handle numbers with repeated prime factors", () => {
-    const result = toFractranNumber(8);
+    const result = FractranNumber.fromNumber(8);
     expect(result.factors).toEqual([{ base: 2, exponent: 3 }]);
   });
 
   it("should factorize complex numbers", () => {
-    const result = toFractranNumber(24);
+    const result = FractranNumber.fromNumber(24);
     expect(result.factors).toEqual([
       { base: 2, exponent: 3 },
       { base: 3, exponent: 1 }
@@ -33,12 +32,12 @@ describe("factorizeToFractranNumber", () => {
   });
 
   it("should handle 1 as empty factors", () => {
-    const result = toFractranNumber(1);
+    const result = FractranNumber.fromNumber(1);
     expect(result.factors).toEqual([]);
   });
 
   it("should factorize larger primes", () => {
-    const result = toFractranNumber(13);
+    const result = FractranNumber.fromNumber(13);
     expect(result.factors).toEqual([{ base: 13, exponent: 1 }]);
   });
 });
@@ -66,8 +65,8 @@ describe("FractranFraction", () => {
 
   describe("fromFractranNumbers", () => {
     it("should create fraction from FractranNumbers", () => {
-      const num: FractranNumber = { factors: [{ base: 2, exponent: 2 }] };
-      const den: FractranNumber = { factors: [{ base: 3, exponent: 1 }] };
+      const num = new FractranNumber([{ base: 2, exponent: 2 }]);
+      const den = new FractranNumber([{ base: 3, exponent: 1 }]);
       const frac = FractranFraction.fromFractranNumbers(num, den);
       
       expect(frac.numerator.factors).toEqual([{ base: 2, exponent: 2 }]);
@@ -77,8 +76,8 @@ describe("FractranFraction", () => {
 
   describe("simplifyFractranFraction", () => {
     it("should simplify fractions with common prime factors", () => {
-      const num: FractranNumber = { factors: [{ base: 2, exponent: 3 }, { base: 3, exponent: 2 }] };
-      const den: FractranNumber = { factors: [{ base: 2, exponent: 1 }, { base: 3, exponent: 2 }] };
+      const num = new FractranNumber([{ base: 2, exponent: 3 }, { base: 3, exponent: 2 }]);
+      const den = new FractranNumber([{ base: 2, exponent: 1 }, { base: 3, exponent: 2 }]);
       const frac = FractranFraction.fromFractranNumbers(num, den);
       
       // 2^3 * 3^2 / (2 * 3^2) = 2^2 / 1 = 4/1
@@ -122,11 +121,11 @@ describe("Fractran", () => {
     it("should set initial input", () => {
       const program = [FractranFraction.fromNumbers(3, 2)];
       const fractran = new Fractran(program);
-      const input: FractranNumber = { factors: [{ base: 2, exponent: 1 }] };
+      const input = new FractranNumber([{ base: 2, exponent: 1 }]);
       
       fractran.start(input);
       
-      expect(fractran.getConfiguration()?.input).toEqual(input);
+      expect(fractran.getConfiguration()?.input.equals(input)).toBe(true);
     });
   });
 
@@ -144,7 +143,7 @@ describe("Fractran", () => {
       const fractran = new Fractran(program);
       
       // Start with 2: 2 * 3/2 = 3
-      fractran.start(toFractranNumber(2));
+      fractran.start(FractranNumber.fromNumber(2));
       fractran.proceed(1);
       
       const result = fractran.getConfiguration()?.input;
@@ -156,7 +155,7 @@ describe("Fractran", () => {
       const fractran = new Fractran(program);
       
       // Start with 3 (not divisible by 2)
-      fractran.start(toFractranNumber(3));
+      fractran.start(FractranNumber.fromNumber(3));
       fractran.proceed(10);
       
       // Should remain 3
@@ -170,7 +169,7 @@ describe("Fractran", () => {
       const fractran = new Fractran(program);
       
       // Start with 4 = 2^2: 4 * 3/2 = 6, 6 * 3/2 = 9
-      fractran.start(toFractranNumber(4));
+      fractran.start(FractranNumber.fromNumber(4));
       fractran.proceed(2);
       
       const result = fractran.getConfiguration()?.input;
@@ -187,7 +186,7 @@ describe("Fractran", () => {
       const fractran = new Fractran(program);
       
       // Start with 2
-      fractran.start(toFractranNumber(2));
+      fractran.start(FractranNumber.fromNumber(2));
       fractran.proceed(1);
       
       // Should apply first fraction: 2 * 5/2 = 5
@@ -208,7 +207,7 @@ describe("Fractran", () => {
       const program = [FractranFraction.fromNumbers(3, 2)];
       const fractran = new Fractran(program);
       
-      fractran.start(toFractranNumber(2));
+      fractran.start(FractranNumber.fromNumber(2));
       
       expect(fractran.isStopped()).toBe(false);
     });
@@ -217,7 +216,7 @@ describe("Fractran", () => {
       const program = [FractranFraction.fromNumbers(3, 2)];
       const fractran = new Fractran(program);
       
-      fractran.start(toFractranNumber(3));
+      fractran.start(FractranNumber.fromNumber(3));
       
       expect(fractran.isStopped()).toBe(true);
     });
@@ -227,7 +226,7 @@ describe("Fractran", () => {
     it("should create independent copy of Fractran instance", () => {
       const program = [FractranFraction.fromNumbers(3, 2)];
       const fractran = new Fractran(program);
-      fractran.start(toFractranNumber(2));
+      fractran.start(FractranNumber.fromNumber(2));
       
       const cloned = fractran.clone() as Fractran;
       
@@ -235,8 +234,8 @@ describe("Fractran", () => {
       fractran.proceed(1);
       
       // Clone should still have original input
-      expect(cloned.getConfiguration()?.input).toEqual(toFractranNumber(2));
-      expect(fractran.getConfiguration()?.input).not.toEqual(cloned.getConfiguration()?.input);
+      expect(cloned.getConfiguration()?.input.equals(FractranNumber.fromNumber(2))).toBe(true);
+      expect(fractran.getConfiguration()?.input.equals(cloned.getConfiguration()!.input)).toBe(false);
     });
 
     it("should clone without input", () => {
@@ -259,12 +258,10 @@ describe("Fractran", () => {
       const fractran = new Fractran(program);
       
       // Start with 2^2 * 3^3 = 4 * 27 = 108 (represents 2 + 3)
-      const input: FractranNumber = {
-        factors: [
-          { base: 2, exponent: 2 },
-          { base: 3, exponent: 3 }
-        ]
-      };
+      const input = new FractranNumber([
+        { base: 2, exponent: 2 },
+        { base: 3, exponent: 3 }
+      ]);
       fractran.start(input);
       fractran.proceed(100);
       
@@ -300,7 +297,7 @@ describe("Fractran", () => {
       const foundPrimes: number[] = [];
 
       // Start with 2
-      fractran.start(toFractranNumber(2));
+      fractran.start(FractranNumber.fromNumber(2));
       for (let i = 0; i < 50000 && foundPrimes.length < expectedPrimes.length; i++) {
         fractran.proceed(1);
         // if current input only has factor 2^k, it should produce next prime
@@ -328,12 +325,10 @@ describe("Fractran", () => {
       const fractran = new Fractran(program);
       
       // Start with 6 = 2 * 3
-      const input: FractranNumber = {
-        factors: [
-          { base: 2, exponent: 1 },
-          { base: 3, exponent: 1 }
-        ]
-      };
+      const input = new FractranNumber([
+        { base: 2, exponent: 1 },
+        { base: 3, exponent: 1 }
+      ]);
       fractran.start(input);
       
       // Run until stopped

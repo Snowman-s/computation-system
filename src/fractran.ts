@@ -8,65 +8,143 @@ import { ComputationSystem } from "./computation-system";
  * 
  * factors = [] means the number is 1
  */
-export type FractranNumber = {
-  factors: {
+export class FractranNumber {
+  public factors: {
     base: number;
     exponent: number;
   }[];
-}
 
-/**
- * Multiplies two Fractran numbers by combining their prime factorizations.
- * 
- * @param a - The first Fractran number
- * @param b - The second Fractran number
- * @returns The product of a and b as a Fractran number
- */
-export function multiplyFractranNumbers(a: FractranNumber, b: FractranNumber): FractranNumber {
-  const result: FractranNumber = { factors: [] };
-  const factorMap: Map<number, number> = new Map();
-  for (const factor of a.factors) {
-    factorMap.set(factor.base, factor.exponent);
+  constructor(factors: { base: number; exponent: number; }[]) {
+    this.factors = factors;
+    this.simplify();
   }
-  for (const factor of b.factors) {
-    factorMap.set(factor.base, (factorMap.get(factor.base) || 0) + factor.exponent);
-  }
-  for (const [base, exponent] of factorMap.entries()) {
-    if (base === 1) {
-      continue; 
-    }
-    result.factors.push({ base, exponent });
-  }
-  return result;
-}
 
-/**
- * Divides two Fractran numbers by subtracting exponents in their prime factorizations.
- * 
- * @param a - The dividend (numerator)
- * @param b - The divisor (denominator)
- * @returns The quotient if division is exact (no remainder), or null if division is not possible
- */
-export function divideFractranNumbers(a: FractranNumber, b: FractranNumber): FractranNumber | null {
-  const result: FractranNumber = { factors: [] };
-  const factorMap: Map<number, number> = new Map();
-  for (const factor of a.factors) {
-    factorMap.set(factor.base, factor.exponent);
-  }
-  for (const factor of b.factors) {
-    const currentExponent = factorMap.get(factor.base) || 0;
-    const newExponent = currentExponent - factor.exponent;
-    if (newExponent < 0) {
-      return null; // Division not possible
+  private simplify(): void {
+    const factorMap: Map<number, number> = new Map();
+    for (const factor of this.factors) {
+      if (factor.base === 1) {
+        continue; // Skip factors of 1
+      } else if (factor.base <= 0) {
+        throw new Error(`Invalid factor base: ${factor.base}. Base must be a positive integer.`);
+      }
+      if (factor.exponent < 0) {
+        throw new Error(`Invalid factor exponent: ${factor.exponent}. Exponent must be a non-negative integer.`);
+      }
+      factorMap.set(factor.base, (factorMap.get(factor.base) || 0) + factor.exponent);
     }
-    factorMap.set(factor.base, newExponent);
-  }
-  for (const [base, exponent] of factorMap.entries()) {
-    if (exponent > 0) {
-      result.factors.push({ base, exponent });
+    this.factors = [];
+    for (const [base, exponent] of factorMap.entries()) {
+      if (exponent > 0) {
+        this.factors.push({ base, exponent });
+      }
     }
   }
-  return result;
+
+  /**
+   * Creates a FractranNumber from a regular number by computing its prime factorization.
+   * 
+   * @param n - The number to convert (must be a positive integer)
+   * @returns The FractranNumber representation with prime factorization
+   */
+  public static fromNumber(n: number): FractranNumber {
+    const factors: { base: number; exponent: number; }[] = [];
+    let num = n;
+
+    for (let i = 2; i <= Math.sqrt(num); i++) {
+      let count = 0;
+      while (num % i === 0) {
+        num /= i;
+        count++;
+      }
+      if (count > 0) {
+        factors.push({ base: i, exponent: count });
+      }
+    }
+
+    // If num is still greater than 1, it's a prime factor
+    if (num > 1) {
+      factors.push({ base: num, exponent: 1 });
+    }
+
+    return new FractranNumber(factors);
+  }
+
+  /**
+   * Multiplies this Fractran number with another by combining their prime factorizations.
+   * 
+   * @param other - The Fractran number to multiply with
+   * @returns The product as a new FractranNumber
+   */
+  public multiply(other: FractranNumber): FractranNumber {
+    const factorMap: Map<number, number> = new Map();
+    for (const factor of this.factors) {
+      factorMap.set(factor.base, factor.exponent);
+    }
+    for (const factor of other.factors) {
+      factorMap.set(factor.base, (factorMap.get(factor.base) || 0) + factor.exponent);
+    }
+    const resultFactors: { base: number; exponent: number; }[] = [];
+    for (const [base, exponent] of factorMap.entries()) {
+      if (base === 1) {
+        continue; 
+      }
+      resultFactors.push({ base, exponent });
+    }
+    return new FractranNumber(resultFactors);
+  }
+
+  /**
+   * Divides this Fractran number by another by subtracting exponents in their prime factorizations.
+   * 
+   * @param other - The divisor
+   * @returns The quotient if division is exact (no remainder), or null if division is not possible
+   */
+  public divide(other: FractranNumber): FractranNumber | null {
+    const factorMap: Map<number, number> = new Map();
+    for (const factor of this.factors) {
+      factorMap.set(factor.base, factor.exponent);
+    }
+    for (const factor of other.factors) {
+      const currentExponent = factorMap.get(factor.base) || 0;
+      const newExponent = currentExponent - factor.exponent;
+      if (newExponent < 0) {
+        return null; // Division not possible
+      }
+      factorMap.set(factor.base, newExponent);
+    }
+    const resultFactors: { base: number; exponent: number; }[] = [];
+    for (const [base, exponent] of factorMap.entries()) {
+      if (exponent > 0) {
+        resultFactors.push({ base, exponent });
+      }
+    }
+    return new FractranNumber(resultFactors);
+  }
+
+  /**
+   * Checks if this Fractran number equals another by comparing their prime factorizations.
+   * 
+   * @param other - The Fractran number to compare with
+   * @returns True if the numbers are equal, false otherwise
+   */
+  public equals(other: FractranNumber): boolean {
+    if (this.factors.length !== other.factors.length) {
+      return false;
+    }
+    const factorMap: Map<number, number> = new Map();
+    for (const factor of this.factors) {
+      factorMap.set(factor.base, factor.exponent);
+    }
+    for (const factor of other.factors) {
+      const exp = factorMap.get(factor.base);
+      factorMap.delete(factor.base);
+      if (exp === undefined || exp !== factor.exponent) {
+        return false;
+      }
+    }
+
+    return factorMap.size === 0;
+  }
 }
 
 /**
@@ -100,8 +178,8 @@ export class FractranFraction {
    */
   public static fromNumbers(numerator: number, denominator: number): FractranFraction {
     return FractranFraction.fromFractranNumbers(
-      toFractranNumber(numerator),
-      toFractranNumber(denominator)
+      FractranNumber.fromNumber(numerator),
+      FractranNumber.fromNumber(denominator)
     );
   }
   
@@ -166,62 +244,7 @@ export class FractranFraction {
   }
 }
 
-/**
- * Converts a regular number to its Fractran representation by computing its prime factorization.
- * 
- * @param n - The number to convert (must be a positive integer)
- * @returns The Fractran number representation with prime factorization
- */
-export function toFractranNumber(n: number): FractranNumber {
-  const factors: FractranNumber = {
-    factors: []
-  };
-  let num = n;
 
-  for (let i = 2; i <= Math.sqrt(num); i++) {
-    let count = 0;
-    while (num % i === 0) {
-      num /= i;
-      count++;
-    }
-    if (count > 0) {
-      factors.factors.push({ base: i, exponent: count });
-    }
-  }
-
-  // If num is still greater than 1, it's a prime factor
-  if (num > 1) {
-    factors.factors.push({ base: num, exponent: 1 });
-  }
-
-  return factors;
-}
-
-/**
- * Checks if two Fractran numbers are equal by comparing their prime factorizations.
- * 
- * @param a - The first Fractran number
- * @param b - The second Fractran number
- * @returns True if the numbers are equal, false otherwise
- */
-export function fractranNumberEquals(a: FractranNumber, b: FractranNumber): boolean {
-  if (a.factors.length !== b.factors.length) {
-    return false;
-  }
-  const factorMap: Map<number, number> = new Map();
-  for (const factor of a.factors) {
-    factorMap.set(factor.base, factor.exponent);
-  }
-  for (const factor of b.factors) {
-    const exp = factorMap.get(factor.base);
-    factorMap.delete(factor.base);
-    if (exp === undefined || exp !== factor.exponent) {
-      return false;
-    }
-  }
-
-  return factorMap.size === 0;
-}
 
 /**
  * Implements the Fractran computation system, a Turing-complete esoteric programming language
@@ -287,11 +310,9 @@ export class Fractran implements ComputationSystem {
     for (let s = 0; s < step; s++) {
       let progressed = false;
       for (const frac of this.program) {
-        const divided = divideFractranNumbers(this.input, frac.denominator);
+        const divided: FractranNumber | null = this.input!.divide(frac.denominator);
         if (divided !== null) {
-          this.input = divided;
-          const multiplied = multiplyFractranNumbers(divided, frac.numerator);
-          this.input = multiplied;
+          this.input = divided.multiply(frac.numerator);
           progressed = true;
           break;
         }
@@ -314,7 +335,7 @@ export class Fractran implements ComputationSystem {
       throw new Error("Input number is not set.");
     }
     for (const frac of this.program) {
-      if (divideFractranNumbers(this.input, frac.denominator) !== null) {
+      if (this.input!.divide(frac.denominator) !== null) {
         return false;
       }
     }
@@ -329,9 +350,9 @@ export class Fractran implements ComputationSystem {
   clone(): ComputationSystem {
     const newFractran = new Fractran(this.program);
     if (this.input !== null) {
-      newFractran.input = {
-        factors: this.input.factors.map(factor => ({ ...factor }))
-      };
+      newFractran.input = new FractranNumber(
+        this.input.factors.map(factor => ({ ...factor }))
+      );
     }
     return newFractran;
   }
