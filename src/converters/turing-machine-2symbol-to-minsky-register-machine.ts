@@ -5,6 +5,7 @@ import {
   TMConfiguration,
   TMRuleSet,
   TMTape,
+  TMMove,
 } from "../turing-machine";
 import {
   MinskyRegisterMachine,
@@ -91,10 +92,13 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
           continue;
         } 
         
+        // TypeScript type narrowing: rule is now guaranteed to have nextState, write, and move
+        const nonHaltRule = rule as { readonly write: TMSymbol; readonly move: TMMove; readonly nextState: TMState };
+        
         // ヘッダが逆方向に動くことで、結果として値が増える方のレジスタ
-        let iMN = rule.move === "L" ? N : M;
+        let iMN = nonHaltRule.move === "L" ? N : M;
         // ヘッダがその方向に動くことで、結果として値が減る方のレジスタ
-        let dMN = rule.move === "L" ? M : N;
+        let dMN = nonHaltRule.move === "L" ? M : N;
 
         // z <- 2 * i
         programs.push({ type: "DEC", register: iMN, nextIfNonZero: instructionNumber(1), nextIfZero: instructionNumber(3) });
@@ -102,7 +106,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
         programs.push({ type: "INC", register: Z, next: instructionNumber(-2) });
  
         // z <- z + 1, if we write symbol1
-        if (rule.write === symbol1) {
+        if (nonHaltRule.write === symbol1) {
           programs.push({ type: "INC", register: Z, next: instructionNumber(1) });
         }
 
@@ -125,9 +129,9 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
 
         // 次の状態へ移動 (終わり)
         shouldResolveAfterAllStates.push(() => {
-          let nextStateInfo = states.get(rule.nextState);
+          let nextStateInfo = states.get(nonHaltRule.nextState);
           if (nextStateInfo === undefined) {
-            throw new Error(`Next state ${rule.nextState.value} is not defined.`);
+            throw new Error(`Next state ${nonHaltRule.nextState.value} is not defined.`);
           }
           decInstruction.nextIfZero = nextStateInfo.instructionNumber;
           incInstruction.next = nextStateInfo.instructionNumber;
