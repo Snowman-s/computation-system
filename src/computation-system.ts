@@ -1,9 +1,11 @@
 export * from "./turing-machine";
 export * from "./tag-system";
 export * from "./elementary-cellular-automaton";
-export * from "./converter";
 export * from "./write-first-turing-machine";
+export * from "./fractran";
+export * from "./minsky-register-machine";
 export * from "./transform-log-types";
+export * from "./converter";
 
 export interface ComputationSystem {
   getConfiguration(): unknown;

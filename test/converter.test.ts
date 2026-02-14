@@ -18,6 +18,10 @@ import {
   WriteFirstTM2SymbolToTagSystemTransformLog,
   TMTape,
   TagSystemLetter,
+  MinskyRegisterMachine,
+  Fractran,
+  FractranFraction,
+  FractranNumber,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -878,6 +882,188 @@ describe("ConverterTest", () => {
     });
   });
 
+  describe("TuringMachine2SymbolToMinskyRegisterMachine", () => {
+    test("Positive", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "R", q2)
+        .state(q2)
+        .add(A, B, "L")
+        .add(B, A, "L", qf)
+        .build();
+
+      const tm = new TuringMachine(A, ruleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      hierarchy.start(tm, [[A, B, B], 0]);
+
+      const tmConfigBeforeExecute = hierarchy.getConfiguration(0)!;
+      expect(tmConfigBeforeExecute.tape.toString()).toMatch(/…A+BBA+…/);
+      expect(tmConfigBeforeExecute.headPosition).toBe(0);
+      expect(tmConfigBeforeExecute.nowState).toBe(q1);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const tmConfig = hierarchy.getConfiguration(0)!;
+      const mrmConfig = hierarchy.getConfiguration(1)!;
+
+      expect(tmConfig.tape.toString()).toMatch(/…A+BA+…/);
+      expect(tmConfig.headPosition).toBe(0);
+      expect(tmConfig.nowState).toBe(qf);
+
+      expect(mrmConfig).not.toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).toBeInstanceOf(MinskyRegisterMachine);
+    });
+
+    test("Work with symbol1 as blank", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "R", q2)
+        .state(q2)
+        .add(A, B, "L")
+        .add(B, A, "L", qf)
+        .build();
+
+      const tm = new TuringMachine(B, ruleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      hierarchy.start(tm, [[A, B, B], 0]);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const tmConfig = hierarchy.getConfiguration(0)!;
+      expect(tmConfig.tape.toString()).toMatch(/…B+AAB+…/);
+      expect(tmConfig.nowState).toBe(qf);
+    });
+
+    test("Monkey - Error if not 2-symbol", () => {
+      const [A, B, C] = TMSymbolFrom("A", "B", "C");
+      const [q1, qf] = TMStateFrom("q1", "qf");
+
+      const invalidRuleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, C, "R")
+        .add(C, A, "R", qf)
+        .build();
+
+      const invalidTM = new TuringMachine(A, invalidRuleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      expect(() => hierarchy.start(invalidTM, [[A, B, C], 0])).toThrowError();
+
+      expect(hierarchy.getConfiguration(1)).toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).toBeNull();
+      expect(hierarchy.getTuple(1)).toBeNull();
+    });
+
+    test("Monkey - Error if multiple rules for same state-symbol", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+      const validRuleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R")
+        .add(B, A, "R", q2)
+        .state(q2)
+        .add(A, B, "L")
+        .add(B, A, "L", qf)
+        .build();
+
+      const validTM = new TuringMachine(A, validRuleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      hierarchy.start(validTM, [[A, B, B], 0]);
+
+      expect(hierarchy.getConfiguration(1)).not.toBeNull();
+      expect(hierarchy.asIndependantSystem(1)).not.toBeNull();
+      expect(hierarchy.getTuple(1)).not.toBeNull();
+    });
+
+    describe("unit", () => {
+      test("interpretConfigration() returns null if unexpected params", () => {
+        const element = Converter.turingMachine2symbolToMinskyRegisterMachine();
+
+        const [A, B] = TMSymbolFrom("A", "B");
+        const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+        const ruleset = TMRuleSet.builder()
+          .state(q1)
+          .add(A, B, "R")
+          .add(B, A, "R", q2)
+          .state(q2)
+          .add(A, B, "L")
+          .add(B, A, "L", qf)
+          .build();
+
+        const tm = new TuringMachine(A, ruleset, q1, qf);
+
+        // bind()前
+        expect(
+          element.interpretConfigration({
+            registers: [BigInt(0), BigInt(0), BigInt(0), BigInt(0)],
+            instructionPointer: 0,
+          })
+        ).toBeNull();
+
+        element.bind(tm.asTuple());
+
+        // 入力がnull
+        expect(element.interpretConfigration(null)).toBeNull();
+
+        // instructionPointerが不正な位置
+        expect(
+          element.interpretConfigration({
+            registers: [BigInt(0), BigInt(0), BigInt(0), BigInt(0)],
+            instructionPointer: 9999,
+          })
+        ).toBeNull();
+      });
+
+      test("interpretInput() throws Error if unexpected params", () => {
+        const element = Converter.turingMachine2symbolToMinskyRegisterMachine();
+
+        const [A, B] = TMSymbolFrom("A", "B");
+        const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
+
+        const ruleset = TMRuleSet.builder()
+          .state(q1)
+          .add(A, B, "R")
+          .add(B, A, "R", q2)
+          .state(q2)
+          .add(A, B, "L")
+          .add(B, A, "L", qf)
+          .build();
+
+        const tm = new TuringMachine(A, ruleset, q1, qf);
+
+        // bind()前
+        expect(() => element.interpretInput([[A, B], 0])).toThrowError();
+
+        element.bind(tm.asTuple());
+
+        // 正常なケース
+        expect(() => element.interpretInput([[A, B], 0])).not.toThrowError();
+      });
+    });
+  });
+
   describe("TuringMachine to 2-symbol", () => {
     test("Positive", () => {
       const element = Converter.turingMachineTo2Symbol();
@@ -908,6 +1094,150 @@ describe("ConverterTest", () => {
       expect(element.interpretConfigration(symbol2TM.getConfiguration())?.tape.toString()).toMatch(
         /S+ASSSBS+/
       );
+    });
+  });
+
+  describe("MinskyRegisterMachineToFractran", () => {
+    test("Positive - INC instruction", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      const program = [
+        { type: "INC" as const, register: 0, next: 1 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(2, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(5), BigInt(3)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(6), BigInt(3)]);
+      expect(interpretedConfig!.instructionPointer).toBe(1);
+    });
+
+    test("Positive - DEC instruction (non-zero)", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      const program = [
+        { type: "DEC" as const, register: 0, nextIfNonZero: 1, nextIfZero: 2 },
+        { type: "INC" as const, register: 1, next: 2 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(2, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(5), BigInt(0)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(4), BigInt(1)]);
+      expect(interpretedConfig!.instructionPointer).toBe(2);
+    });
+
+    test("Positive - DEC instruction (zero)", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      const program = [
+        { type: "DEC" as const, register: 0, nextIfNonZero: 1, nextIfZero: 2 },
+        { type: "INC" as const, register: 1, next: 2 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(2, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(0), BigInt(10)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(0), BigInt(10)]);
+      expect(interpretedConfig!.instructionPointer).toBe(2);
+    });
+
+    test("Complex program - addition", () => {
+      const element = Converter.minskyRegisterMachineToFractran();
+
+      // Program: R2 = R0 + R1
+      // while R0 > 0: R0--, R2++
+      // while R1 > 0: R1--, R2++
+      const program = [
+        { type: "DEC" as const, register: 0, nextIfNonZero: 1, nextIfZero: 2 },
+        { type: "INC" as const, register: 2, next: 0 },
+        { type: "DEC" as const, register: 1, nextIfNonZero: 3, nextIfZero: 4 },
+        { type: "INC" as const, register: 2, next: 2 },
+        { type: "HALT" as const },
+      ];
+      const mrm = new MinskyRegisterMachine(3, program);
+
+      element.bind(mrm.asTuple());
+
+      const fractran = element.asIndependantSystem()!;
+      fractran.start(element.interpretInput({ registers: [BigInt(3), BigInt(5), BigInt(0)] }));
+
+      while (!fractran.isStopped()) {
+        fractran.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(fractran.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.registers).toEqual([BigInt(0), BigInt(0), BigInt(8)]);
+      expect(interpretedConfig!.instructionPointer).toBe(4);
+    });
+
+    describe("unit", () => {
+      test("interpretConfigration() returns null if unexpected params", () => {
+        const element = Converter.minskyRegisterMachineToFractran();
+
+        const program = [{ type: "HALT" as const }];
+        const mrm = new MinskyRegisterMachine(1, program);
+
+        element.bind(mrm.asTuple());
+
+        // Configuration with invalid instruction prime
+        const fractran = new Fractran([FractranFraction.fromFractranNumbers(
+          new FractranNumber([{ base: 999, exponent: 1 }]),
+          new FractranNumber([{ base: 1, exponent: 1 }])
+        )]);
+        fractran.start(new FractranNumber([{ base: 999, exponent: 1 }]));
+
+        expect(element.interpretConfigration(fractran.getConfiguration())).toBeNull();
+      });
+
+      test("interpretInput() works correctly", () => {
+        const element = Converter.minskyRegisterMachineToFractran();
+
+        const program = [{ type: "HALT" as const }];
+        const mrm = new MinskyRegisterMachine(2, program);
+
+        element.bind(mrm.asTuple());
+
+        const input = element.interpretInput({ registers: [BigInt(3), BigInt(5)] });
+
+        // Should have factors for both registers and the initial instruction
+        expect(input.factors.length).toBeGreaterThanOrEqual(3);
+        
+        // Sum of exponents should be 3 + 5 + 1 (for instruction pointer)
+        const totalExponent = input.factors.reduce((sum, f) => sum + f.exponent, 0);
+        expect(totalExponent).toBe(9);
+      });
     });
   });
 });

@@ -5,6 +5,8 @@ import {
   TMRuleOutput,
   TMState,
   TMSymbol,
+  MinskyRegisterMachineInstruction,
+  FractranFraction,
 } from "./computation-system";
 
 export type Tag2SystemToTuringMachine218TransformLog = {
@@ -60,3 +62,26 @@ export type TuringMachineTo2SymbolTransformLog = {
   symbolCorrespondenceTable: { original: TMSymbol; to: TMSymbol[] }[];
   stateCorrespondenceTable: { original: TMState; to: TMState }[];
 };
+
+export type TuringMachine2SymbolToMinskyRegisterMachineTransformLog = {
+  states: Map<TMState, {
+    stateNumber: number;
+    instructionNumber: number;
+  }>;
+  symbol0: TMSymbol;
+  symbol1: TMSymbol;
+  programs: MinskyRegisterMachineInstruction[];
+}
+
+export type MinskyRegisterMachineToFractranTransformLog = {
+  primeCorrespondenceTable: ({
+    readonly type: "register";
+    readonly registerIndex: number;
+    readonly prime: number;
+  } | {
+    readonly type: "instruction";
+    readonly instructionIndex: number;
+    readonly prime: number;
+    readonly fracs: FractranFraction[];
+  })[];
+}
