@@ -5,7 +5,6 @@ import {
   TMConfiguration,
   TMRuleSet,
   TMTape,
-  TMMove,
 } from "../turing-machine";
 import {
   MinskyRegisterMachine,
@@ -93,7 +92,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
         } 
         
         // TypeScript type narrowing: rule is now guaranteed to have nextState, write, and move
-        const nonHaltRule = rule as { readonly write: TMSymbol; readonly move: TMMove; readonly nextState: TMState };
+        const nonHaltRule = rule;
         
         // ヘッダが逆方向に動くことで、結果として値が増える方のレジスタ
         const iMN = nonHaltRule.move === "L" ? N : M;
@@ -167,7 +166,10 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
     const [nowState, ] = nowStatesEntry;
 
     // M は左、 N は右, A はヘッド位置
-    let [A, M, N, ] = [0, 1, 2, 3].map(r => real.registers[r]);
+    const registerValues = [0, 1, 2, 3].map(r => real.registers[r]);
+    const A = registerValues[0];
+    let M = registerValues[1];
+    let N = registerValues[2];
 
     let symbols: TMSymbol[] = [];
     while (BigInt(0) < M) {
@@ -204,7 +206,10 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
       throw new Error("Transform log is not available.");
     }
 
-    let [A, M, N, Z] = [0, 0, 0, 0].map(() => BigInt(0));
+    let A = BigInt(0);
+    let M = BigInt(0);
+    let N = BigInt(0);
+    const Z = BigInt(0);
     const [word, headPosition] = virtual;
 
     for (let i = 0; i < headPosition; i++) {

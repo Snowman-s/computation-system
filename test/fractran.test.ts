@@ -302,7 +302,7 @@ describe("Fractran", () => {
         fractran.proceed(1);
         // if current input only has factor 2^k, it should produce next prime
         const currentInput = fractran.getConfiguration()?.input;
-        if (currentInput && currentInput.factors.length === 1 && currentInput.factors[0].base === 2) {
+        if (currentInput?.factors.length === 1 && currentInput.factors[0].base === 2) {
           const exponent = currentInput.factors[0].exponent;
           foundPrimes.push(exponent);
         }

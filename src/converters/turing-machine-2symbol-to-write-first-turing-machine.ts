@@ -47,11 +47,14 @@ export class TuringMachine2SymbolToWriteFirstTuringMachineTransformElement
   interpretConfigration(real: TMConfiguration | null): TMConfiguration | null {
     if (real === null || this.transformLog === null) return null;
 
-    const state = this.transformLog.stateCorrespondenceTable.filter(
+    const found = this.transformLog.stateCorrespondenceTable.find(
       (elm) => elm.writeTMState === real.nowState
-    )[0].tmState;
+    );
+    if (found === undefined) {
+      throw new Error(`State ${real.nowState.value} is not in the correspondence table.`);
+    }
 
-    return { nowState: state, tape: real.tape, headPosition: real.headPosition };
+    return { nowState: found.tmState, tape: real.tape, headPosition: real.headPosition };
   }
 
   interpretInput(

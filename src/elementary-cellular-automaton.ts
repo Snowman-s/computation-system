@@ -31,6 +31,11 @@ export interface LockedECACells {
    * @returns is the cell 0 or 1.
    */
   readCellAt(index: number): 0 | 1
+
+  /**
+   * Returns string representation of the cells.
+   */
+  toString(): string
 }
 
 export interface ECAConfiguration {

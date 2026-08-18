@@ -27,6 +27,8 @@ import { MinskyRegisterMachineToFractranTransformElement } from "./converters/mi
 
 export class Converter {
   /* istanbul ignore next */
+  // Converter は static メソッドのみを提供するユーティリティクラスのため、インスタンス化を禁止する
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
   private constructor() {}
 
   /**
@@ -110,7 +112,7 @@ export interface ITransformElement<
 }
 
 type SystemsAsHierarchyElements<
-  S extends ComputationSystem[] | unknown,
+  S,
   TransformLog extends unknown[]
 > = S extends ComputationSystem[]
   ? S["length"] extends 2
@@ -179,7 +181,7 @@ class TransformHierarchy<S extends ComputationSystem[], TransformLog extends unk
   }
 
   stopped(): boolean {
-    return this.baseSystem !== null && this.baseSystem.isStopped();
+    return this.baseSystem?.isStopped() ?? false;
   }
 
   start(inputSystem: FirstOf<S>, input: Parameters<FirstOf<S>["start"]>[0]): void {
@@ -224,7 +226,7 @@ class TransformHierarchy<S extends ComputationSystem[], TransformLog extends unk
   }
 
   getTuple<N extends number>(system: N): ReturnType<S[N]["asTuple"]> | null {
-    let ret: SystemTuple<ComputationSystem> | null;
+    let ret: SystemTuple<ComputationSystem>;
 
     if (system === 0) {
       if (this.inputSystemSample === null) {

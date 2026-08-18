@@ -140,7 +140,7 @@ export class TagSystemRuleSet {
           if (out.stop) {
             return `${v(firstLetter)} → STOP`;
           } else {
-            return `${v(firstLetter)} → ${out.writeWord}`;
+            return `${v(firstLetter)} → ${out.writeWord.toString()}`;
           }
         })
         .join(", ") +
@@ -384,6 +384,6 @@ export class TagSystem implements ComputationSystem {
    * @returns String representation of this system.
    */
   public toString() {
-    return `[ruleset=${this.ruleSet}]`;
+    return `[ruleset=${this.ruleSet.toString()}]`;
   }
 }

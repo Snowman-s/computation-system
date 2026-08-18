@@ -8,7 +8,7 @@ export class SimpleTape<S> {
     data: S[],
     blank: S,
     minIndex: number,
-    strFunc: (s: S) => string = (s) => `${s}`
+    strFunc: (s: S) => string = (s) => String(s)
   ) {
     this.data = [...data];
     this.blank = blank;
@@ -24,7 +24,6 @@ export class SimpleTape<S> {
   }
 
   public write(n: number, symbol: S) {
-    console.debug(`${n}, ${symbol}, ${this.minIndex}, ${this.data.length}`)
     if (symbol == this.blank) {
       // データ縮小
       if (n == this.minIndex) {
@@ -47,11 +46,11 @@ export class SimpleTape<S> {
     if (n < this.minIndex) {
       if (symbol == this.blank) return
       // データ拡張
-      this.data.unshift(...Array(this.minIndex - n).fill(this.blank));
+      this.data.unshift(...Array<S>(this.minIndex - n).fill(this.blank));
       this.minIndex = n;
     } else if (this.minIndex + this.data.length - 1 < n) {
       if (symbol == this.blank) return
-      this.data.push(...Array(n - (this.minIndex + this.data.length - 1)).fill(this.blank));
+      this.data.push(...Array<S>(n - (this.minIndex + this.data.length - 1)).fill(this.blank));
     }
 
     this.data[n - this.minIndex] = symbol;

@@ -221,7 +221,7 @@ describe("ConverterTest", () => {
         const [tape, startHead] = element.interpretInput([[A, B, B]]);
 
         const leftOfTape = tape.slice(0, startHead + 1);
-        leftOfTape.push([...tuple.symbolSet].filter((symbol) => symbol.value == "M")[0]);
+        leftOfTape.push([...tuple.symbolSet].find((symbol) => symbol.value == "M")!);
         expect(
           element.interpretConfigration({
             tape: TMTape.create(leftOfTape, tuple.blankSymbol).locked(),
@@ -438,8 +438,8 @@ describe("ConverterTest", () => {
       expect(tmtape?.toString()).toMatch(/…A+BBBA+…/);
 
       const initStateTransformData = hierarchy
-        .getTransFormLogOf(0)
-        ?.symbolCorrespondenceTable.filter((data) => data.state == q1)[0]!;
+        .getTransFormLogOf(0)!
+        .symbolCorrespondenceTable.find((data) => data.state == q1)!;
 
       const initStateOutput = hierarchy
         .getTuple(1)
@@ -619,11 +619,10 @@ describe("ConverterTest", () => {
       expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
     });
     test("Tuple and config is null before executed", () => {
-      let hierarchy: ITransformHierarchy<
+      const hierarchy: ITransformHierarchy<
         [WriteFirstTuringMachine, TagSystem],
         [WriteFirstTM2SymbolToTagSystemTransformLog]
-      >;
-      hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      > = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
       expect(hierarchy.getTuple(0)).toBeNull();
       expect(hierarchy.getTuple(1)).toBeNull();
       expect(hierarchy.asIndependantSystem(0)).toBeNull();

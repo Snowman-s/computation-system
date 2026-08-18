@@ -30,7 +30,7 @@ export class FractranNumber {
       if (factor.exponent < 0) {
         throw new Error(`Invalid factor exponent: ${factor.exponent}. Exponent must be a non-negative integer.`);
       }
-      factorMap.set(factor.base, (factorMap.get(factor.base) || 0) + factor.exponent);
+      factorMap.set(factor.base, (factorMap.get(factor.base) ?? 0) + factor.exponent);
     }
     this.factors = [];
     for (const [base, exponent] of factorMap.entries()) {
@@ -81,7 +81,7 @@ export class FractranNumber {
       factorMap.set(factor.base, factor.exponent);
     }
     for (const factor of other.factors) {
-      factorMap.set(factor.base, (factorMap.get(factor.base) || 0) + factor.exponent);
+      factorMap.set(factor.base, (factorMap.get(factor.base) ?? 0) + factor.exponent);
     }
     const resultFactors: { base: number; exponent: number; }[] = [];
     for (const [base, exponent] of factorMap.entries()) {
@@ -105,7 +105,7 @@ export class FractranNumber {
       factorMap.set(factor.base, factor.exponent);
     }
     for (const factor of other.factors) {
-      const currentExponent = factorMap.get(factor.base) || 0;
+      const currentExponent = factorMap.get(factor.base) ?? 0;
       const newExponent = currentExponent - factor.exponent;
       if (newExponent < 0) {
         return null; // Division not possible

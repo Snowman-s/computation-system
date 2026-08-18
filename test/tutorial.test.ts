@@ -57,5 +57,6 @@ describe("Tutorial", () => {
     //The format of that table depends on the conversion method. See the code of "converter.ts".
     //!WARN! This feature is currently particularly unstable and can easily change (e.g., method names), so use with caution.
     const table = transformHierarchy.getTransFormLogOf(0)!;
+    console.log(table);
   });
 });

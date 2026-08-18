@@ -137,7 +137,7 @@ export class WriteFirstTM2SymbolToTagSystemTransformElement
       (value) => value.state === state && value.whichSymbolReadBefore === nowHeadSymbol
     );
     if (usingLetters.length === 0)
-      throw new Error(`state "${state}", was not passed to bind().`);
+      throw new Error(`state "${state.value}", was not passed to bind().`);
 
     const usingLetter = usingLetters[0];
 
@@ -204,11 +204,11 @@ export class WriteFirstTM2SymbolToTagSystemTransformElement
           return ret;
         } else if (tmoutCandinates.length > 1) {
           throw new Error(
-            `Too much rules for "${state.value}" is defined: ${tmoutCandinates.map(
-              (candinate) => {
+            `Too much rules for "${state.value}" is defined: ${tmoutCandinates
+              .map((candinate) => {
                 return `"${state.value} => ${candinate.write.value}, ${candinate.move}"`;
-              }
-            )}`
+              })
+              .join(", ")}`
           );
         }
 

@@ -488,6 +488,6 @@ export class WriteFirstTuringMachine implements ComputationSystem {
    * @returns String representation of this machine.
    */
   public toString() {
-    return `[blank=${this.blank.value},ruleset=${this.ruleset},acc=${this.acceptState?.value}]`;
+    return `[blank=${this.blank.value},ruleset=${this.ruleset.toString()},acc=${this.acceptState?.value}]`;
   }
 }

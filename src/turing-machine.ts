@@ -594,6 +594,6 @@ export class TuringMachine implements ComputationSystem {
    * @returns String representation of this machine.
    */
   public toString() {
-    return `[blank=${this.blank.value},ruleset=${this.ruleset},init=${this.initState.value},acc=${this.acceptState?.value}]`;
+    return `[blank=${this.blank.value},ruleset=${this.ruleset.toString()},init=${this.initState.value},acc=${this.acceptState?.value}]`;
   }
 }

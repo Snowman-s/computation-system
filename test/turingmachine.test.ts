@@ -39,7 +39,7 @@ describe("TMTape", function () {
     expect(tape.toString()).toEqual("…SABAASBS…");
     tape.write(-2, B);
     expect(tape.toString()).toEqual("…SBSABAASBS…");
-    expect(`${tape}`).toEqual("…SBSABAASBS…");
+    expect(String(tape)).toEqual("…SBSABAASBS…");
 
     expect(tape.toString()).toBe(tape.locked().toString());
 

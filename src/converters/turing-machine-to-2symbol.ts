@@ -269,7 +269,7 @@ export class TuringMachineTo2SymbolTransformElement
           to: new Array<TMSymbol>(l - splitedIndex.length).fill(symbol0).concat(splitedIndex),
         };
       }),
-      blank: { original: blankSymbol, to: new Array(l).fill(symbol0) },
+      blank: { original: blankSymbol, to: new Array<TMSymbol>(l).fill(symbol0) },
       stateCorrespondenceTable: states.map((state) => {
         return { original: state, to: toNewStateTLR("T", state, []) };
       }),
