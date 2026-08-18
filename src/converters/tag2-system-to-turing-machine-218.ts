@@ -151,7 +151,7 @@ export class Tag2SystemToTuringMachine218TransformElement
     const tape = real.tape;
     const range = tape.getWrittenRange();
 
-    let letters: TagSystemLetter[] = [];
+    const letters: TagSystemLetter[] = [];
     let stopped = false;
 
     if (tape.read(range.left + 1) === this.R) {
@@ -250,7 +250,7 @@ export class Tag2SystemToTuringMachine218TransformElement
     const rawLetters = Array.from(system.letterSet);
 
     let stopLetter: TagSystemLetter | null = null;
-    let organizedLetters: TagSystemLetter[] = [];
+    const organizedLetters: TagSystemLetter[] = [];
     rawLetters.forEach((v) => {
       const rule = ruleSet.getCandinates(v);
       if (rule.stop) {
@@ -263,7 +263,7 @@ export class Tag2SystemToTuringMachine218TransformElement
     });
 
     // 各文字の出現頻度を調べる
-    const appearTimes: Map<TagSystemLetter, number> = new Map();
+    const appearTimes = new Map<TagSystemLetter, number>();
     organizedLetters.forEach((letter) => {
       const rule = ruleSet.getCandinates(letter);
       if (rule.stop) throw new Error("Internal Error!");
@@ -276,7 +276,7 @@ export class Tag2SystemToTuringMachine218TransformElement
 
     if (stopLetter !== null) organizedLetters.push(stopLetter);
 
-    let table: {
+    const table: {
       letter: TagSystemLetter | undefined;
       output: TagSystemWord | "STOP" | undefined;
       N: number;

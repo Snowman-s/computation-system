@@ -7,9 +7,9 @@ import { ComputationSystem } from "./computation-system";
  * Simply having equal "value" does not make them equal characters.
  *
  */
-export type TagSystemLetter = { readonly value: string };
+export interface TagSystemLetter { readonly value: string }
 
-export type TagSystemConfiguration = { word: TagSystemWord };
+export interface TagSystemConfiguration { word: TagSystemWord }
 
 /**
  * Create TagSystemLetter list with each element of strs as its representation.
@@ -130,7 +130,7 @@ export class TagSystemRuleSet {
    * @returns string representation of this ruleset
    */
   public toString() {
-    let v = function <T>(k: { value: T }) {
+    const v = function <T>(k: { value: T }) {
       return k.value;
     };
     return (
@@ -155,7 +155,7 @@ export class TagSystemRuleSet {
  * @see {@link TagSystemRuleSet}
  */
 export class TagSystemRuleSetBuilder {
-  private rules: Map<TagSystemLetter, TagSystemRuleOutput | undefined> = new Map();
+  private rules = new Map<TagSystemLetter, TagSystemRuleOutput | undefined>();
 
   /**
    * Add rule to this builder.
@@ -253,7 +253,7 @@ export class TagSystem implements ComputationSystem {
   private readonly deleteNum: number;
   private readonly ruleSet: TagSystemRuleSet;
   private letters: TagSystemLetter[] | null = null;
-  private stop: boolean = false;
+  private stop = false;
 
   /**
    * Initialize machine with given arguments.

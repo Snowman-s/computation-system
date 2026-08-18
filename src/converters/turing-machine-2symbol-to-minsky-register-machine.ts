@@ -35,20 +35,20 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
     initState: TMState;
     acceptState: TMState | null;
   }): void {
-    let programs: MinskyRegisterMachineInstruction[] = [];
-    let instructionNumber = (delta = 0) => programs.length + delta;
-    let states: Map<TMState, {
+    const programs: MinskyRegisterMachineInstruction[] = [];
+    const instructionNumber = (delta = 0) => programs.length + delta;
+    const states = new Map<TMState, {
       stateNumber: number;
       instructionNumber: number;
-    }> = new Map();
-    let stateList: TMState[] = Array.from(system.stateSet);
+    }>();
+    const stateList: TMState[] = Array.from(system.stateSet);
     stateList.forEach((state, index) => {
       states.set(state, {
         stateNumber: index,
         instructionNumber: -1,
       });
     });
-    let symbolList: TMSymbol[] = Array.from(system.symbolSet);
+    const symbolList: TMSymbol[] = Array.from(system.symbolSet);
     if (symbolList.length !== 2) {
       throw new Error("This converter only supports 2-symbol Turing Machines.");
     }
@@ -59,11 +59,11 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
     }
 
     // レジスタ
-    let [A, M, N, Z] = [0, 1, 2, 3];
+    const [A, M, N, Z] = [0, 1, 2, 3];
 
-    let shouldResolveAfterAllStates: (() => void)[] = [];
+    const shouldResolveAfterAllStates: (() => void)[] = [];
 
-    for(let s of stateList) {
+    for(const s of stateList) {
       const startingInstructionNumber = instructionNumber();
       states.get(s)!.instructionNumber = startingInstructionNumber;
       if (s === system.acceptState) {
@@ -74,19 +74,19 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
 
       // FIXME: to be filled later
       // 0 -> 1 の順
-      let firstProgram = { type: "DEC" as const, register: A, nextIfNonZero: -1, nextIfZero: instructionNumber(1) };
+      const firstProgram = { type: "DEC" as const, register: A, nextIfNonZero: -1, nextIfZero: instructionNumber(1) };
       programs.push(firstProgram);
 
-      for(let symbol of [symbol0, symbol1]) {
+      for(const symbol of [symbol0, symbol1]) {
         if (symbol === symbol1) {
           firstProgram.nextIfNonZero = instructionNumber();
         } 
 
-        let rules = system.ruleset.getCandinates(s, symbol);
+        const rules = system.ruleset.getCandinates(s, symbol);
         if (rules.length !== 1) {
           throw new Error(`State ${s.value} has ${rules.length} rules for symbol ${symbol.value}, expected exactly 1.`);
         }
-        let rule = rules[0];
+        const rule = rules[0];
         if (rule.move === "HALT") {
           programs.push({ type: "HALT" });
           continue;
@@ -96,9 +96,9 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
         const nonHaltRule = rule as { readonly write: TMSymbol; readonly move: TMMove; readonly nextState: TMState };
         
         // ヘッダが逆方向に動くことで、結果として値が増える方のレジスタ
-        let iMN = nonHaltRule.move === "L" ? N : M;
+        const iMN = nonHaltRule.move === "L" ? N : M;
         // ヘッダがその方向に動くことで、結果として値が減る方のレジスタ
-        let dMN = nonHaltRule.move === "L" ? M : N;
+        const dMN = nonHaltRule.move === "L" ? M : N;
 
         // z <- 2 * i
         programs.push({ type: "DEC", register: iMN, nextIfNonZero: instructionNumber(1), nextIfZero: instructionNumber(3) });
@@ -129,7 +129,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
 
         // 次の状態へ移動 (終わり)
         shouldResolveAfterAllStates.push(() => {
-          let nextStateInfo = states.get(nonHaltRule.nextState);
+          const nextStateInfo = states.get(nonHaltRule.nextState);
           if (nextStateInfo === undefined) {
             throw new Error(`Next state ${nonHaltRule.nextState.value} is not defined.`);
           }
@@ -158,13 +158,13 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
       return null;
     }
 
-    let nowStatesEntry = Array.from(this.transformLog.states.entries()).find(([_, v]) => v.instructionNumber === real.instructionPointer);
+    const nowStatesEntry = Array.from(this.transformLog.states.entries()).find(([_, v]) => v.instructionNumber === real.instructionPointer);
 
     if (nowStatesEntry === undefined) {
       return null;
     }
 
-    let [nowState, ] = nowStatesEntry;
+    const [nowState, ] = nowStatesEntry;
 
     // M は左、 N は右, A はヘッド位置
     let [A, M, N, ] = [0, 1, 2, 3].map(r => real.registers[r]);
@@ -179,7 +179,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
       M = M >> BigInt(1);
     }
 
-    let nSymbols: TMSymbol[] = [];
+    const nSymbols: TMSymbol[] = [];
     while (BigInt(0) < N) {
       if ((N & BigInt(1)) === BigInt(0)) {
         nSymbols.push(this.transformLog.symbol0);
@@ -205,7 +205,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
     }
 
     let [A, M, N, Z] = [0, 0, 0, 0].map(() => BigInt(0));
-    let [word, headPosition] = virtual;
+    const [word, headPosition] = virtual;
 
     for (let i = 0; i < headPosition; i++) {
       M = M << BigInt(1);

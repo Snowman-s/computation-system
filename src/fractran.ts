@@ -20,7 +20,7 @@ export class FractranNumber {
   }
 
   private simplify(): void {
-    const factorMap: Map<number, number> = new Map();
+    const factorMap = new Map<number, number>();
     for (const factor of this.factors) {
       if (factor.base === 1) {
         continue; // Skip factors of 1
@@ -76,7 +76,7 @@ export class FractranNumber {
    * @returns The product as a new FractranNumber
    */
   public multiply(other: FractranNumber): FractranNumber {
-    const factorMap: Map<number, number> = new Map();
+    const factorMap = new Map<number, number>();
     for (const factor of this.factors) {
       factorMap.set(factor.base, factor.exponent);
     }
@@ -100,7 +100,7 @@ export class FractranNumber {
    * @returns The quotient if division is exact (no remainder), or null if division is not possible
    */
   public divide(other: FractranNumber): FractranNumber | null {
-    const factorMap: Map<number, number> = new Map();
+    const factorMap = new Map<number, number>();
     for (const factor of this.factors) {
       factorMap.set(factor.base, factor.exponent);
     }
@@ -131,7 +131,7 @@ export class FractranNumber {
     if (this.factors.length !== other.factors.length) {
       return false;
     }
-    const factorMap: Map<number, number> = new Map();
+    const factorMap = new Map<number, number>();
     for (const factor of this.factors) {
       factorMap.set(factor.base, factor.exponent);
     }
@@ -150,14 +150,14 @@ export class FractranNumber {
 /**
  * Represents a Fractran program as a tuple containing a list of fractions.
  */
-export type FractranTuple = {
+export interface FractranTuple {
   program: readonly FractranFraction[];
 }
 
 /**
  * Represents the current configuration of a Fractran computation.
  */
-export type FractranConfiguration = {
+export interface FractranConfiguration {
   input: FractranNumber;
 }
 
@@ -206,8 +206,8 @@ export class FractranFraction {
    * Modifies the fraction in place.
    */
   public simplify(): void {
-    const numeratorMap: Map<number, number> = new Map();
-    const denominatorMap: Map<number, number> = new Map();
+    const numeratorMap = new Map<number, number>();
+    const denominatorMap = new Map<number, number>();
 
     // Build maps of factors
     for (const factor of this.numerator.factors) {
@@ -271,7 +271,7 @@ export class Fractran implements ComputationSystem {
     }
 
     return {
-      input: this.input as FractranNumber
+      input: this.input
     };
   }
   
@@ -310,7 +310,7 @@ export class Fractran implements ComputationSystem {
     for (let s = 0; s < step; s++) {
       let progressed = false;
       for (const frac of this.program) {
-        const divided: FractranNumber | null = this.input!.divide(frac.denominator);
+        const divided: FractranNumber | null = this.input.divide(frac.denominator);
         if (divided !== null) {
           this.input = divided.multiply(frac.numerator);
           progressed = true;
@@ -335,7 +335,7 @@ export class Fractran implements ComputationSystem {
       throw new Error("Input number is not set.");
     }
     for (const frac of this.program) {
-      if (this.input!.divide(frac.denominator) !== null) {
+      if (this.input.divide(frac.denominator) !== null) {
         return false;
       }
     }

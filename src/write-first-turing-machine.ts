@@ -7,19 +7,19 @@ import {
   TMTape,
 } from "./computation-system";
 
-export type WriteFirstTMRuleOutput = {
+export interface WriteFirstTMRuleOutput {
   readonly write: TMSymbol;
   readonly move: TMMove;
   readonly changeStates: readonly {
     readonly read: TMSymbol;
     readonly thenGoTo: TMState | "HALT";
   }[];
-};
+}
 
-export type WriteFirstTMRule = {
+export interface WriteFirstTMRule {
   readonly nowState: TMState;
   readonly out: WriteFirstTMRuleOutput;
-};
+}
 
 /**
  * The Write-First Turing Machine's program.
@@ -101,7 +101,7 @@ export class WriteFirstTMRuleSet {
    * @returns string representation of this ruleset
    */
   public toString() {
-    let v = function <T>(k: { value: T }) {
+    const v = function <T>(k: { value: T }) {
       return k.value;
     };
     return (
@@ -355,7 +355,7 @@ export class WriteFirstTuringMachine implements ComputationSystem {
       if (this.isAccepted()) return;
       if (this.isHalted()) return;
 
-      const candinateRules = this.ruleset.getCandinates(this.nowState!);
+      const candinateRules = this.ruleset.getCandinates(this.nowState);
 
       if (candinateRules.length > 1) {
         throw new Error(`Many rules corresponding to {${this.nowState.value}} are defined.`);

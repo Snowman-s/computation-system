@@ -10,8 +10,8 @@ import {
 
 describe("WriteFirstTMRule", () => {
   it("NormalWriteFirstTMRuleTest", () => {
-    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+    const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    const [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(A, q1)
@@ -39,12 +39,12 @@ describe("WriteFirstTMRule", () => {
     });
   });
   it("MonkeyCreateTest", () => {
-    let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
-    let [q1, q2, q3, q4]: TMState[] = TMStateFrom("q1", "q2", "q3", "q4");
+    const [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+    const [q1, q2, q3, q4]: TMState[] = TMStateFrom("q1", "q2", "q3", "q4");
     const builder = WriteFirstTMRuleSet.builder();
 
-    expect(() => builder.add(A, q1)).toThrowError();
-    expect(() => builder.addHALT(B)).toThrowError();
+    expect(() => builder.add(A, q1)).toThrow();
+    expect(() => builder.addHALT(B)).toThrow();
 
     const ruleset = builder
       .state(q3, A, "R")
@@ -132,8 +132,8 @@ describe("WriteFirstTMRule", () => {
     expect(rule4.length).toBe(0);
   });
   it("ToStringTest", () => {
-    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+    const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    const [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(B, q1)
@@ -148,10 +148,10 @@ describe("WriteFirstTMRule", () => {
 
 describe("WriteFirstTuringMachine", function () {
   it("ManuallyProceedTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-    let ruleset = WriteFirstTMRuleSet.builder()
+    const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(A, q1)
       .add(B, q2)
@@ -164,9 +164,9 @@ describe("WriteFirstTuringMachine", function () {
       .add(Blank, qf)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
     //スタート前
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
 
     tm.start([[A, A, B, B], 0, q1]);
 
@@ -185,13 +185,13 @@ describe("WriteFirstTuringMachine", function () {
     expect(initialWord[1]).toBe(A);
     expect(initialWord).not.toHaveProperty("write");
     //これ以上TMが動くことは無い
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
   });
   it('Use"HALT"Test', () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2, q3]: TMState[] = TMStateFrom("q1", "q2", "q3");
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2, q3]: TMState[] = TMStateFrom("q1", "q2", "q3");
 
-    let ruleset = WriteFirstTMRuleSet.builder()
+    const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(A, q1)
       .add(B, q2)
@@ -201,7 +201,7 @@ describe("WriteFirstTuringMachine", function () {
       .addHALT(Blank)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset);
     tm.start([[A, A, B, B], 0, q1]);
 
     tm.proceed(3);
@@ -212,25 +212,25 @@ describe("WriteFirstTuringMachine", function () {
     expect(tm.isAccepted()).toEqual(false);
     expect(tm.isStopped()).toEqual(true);
 
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
   });
   it("Zero-LengthTapeTest", () => {
-    let [Blank]: TMSymbol[] = TMSymbolFrom("S");
-    let [q1]: TMState[] = TMStateFrom("q1");
-    let ruleset = WriteFirstTMRuleSet.builder().state(q1, Blank, "R").addHALT(Blank).build();
+    const [Blank]: TMSymbol[] = TMSymbolFrom("S");
+    const [q1]: TMState[] = TMStateFrom("q1");
+    const ruleset = WriteFirstTMRuleSet.builder().state(q1, Blank, "R").addHALT(Blank).build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset);
     tm.start([[], 0, q1]);
 
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
     expect(tm.isHalted()).toBe(true);
   });
   it("TupleTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, qf]: TMState[] = TMStateFrom("q1", "qf");
-    let ruleset = WriteFirstTMRuleSet.builder().state(q1, A, "R").add(B, q1).build();
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, qf]: TMState[] = TMStateFrom("q1", "qf");
+    const ruleset = WriteFirstTMRuleSet.builder().state(q1, A, "R").add(B, q1).build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
 
     const tuple = tm.asTuple();
     expect(tuple.acceptState).toEqual(qf);
@@ -246,9 +246,9 @@ describe("WriteFirstTuringMachine", function () {
     expect(tuple.stateSet).toContain(qf);
   });
   it("GetConfigurationTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
-    let ruleset = WriteFirstTMRuleSet.builder()
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+    const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(A, q1)
       .add(B, q2)
@@ -258,9 +258,9 @@ describe("WriteFirstTuringMachine", function () {
       .add(Blank, qf)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
     //スタート前
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
     const beforeConfig = tm.getConfiguration();
     expect(beforeConfig).toBeNull();
 
@@ -278,8 +278,8 @@ describe("WriteFirstTuringMachine", function () {
     expect(afterConfig!.tape.read(3)).toBe(B);
   });
   it("MonkeyTuringMachineTest", () => {
-    let [A, B, C, D, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "D", "S");
-    let [q1, q2, q3]: TMState[] = TMStateFrom("q1", "q2", "q3");
+    const [A, B, C, D, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "D", "S");
+    const [q1, q2, q3]: TMState[] = TMStateFrom("q1", "q2", "q3");
     const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(A, q1)
@@ -294,35 +294,35 @@ describe("WriteFirstTuringMachine", function () {
       .add(A, q2)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset);
     tm.start([[A, A, B], 0, q1]);
 
-    expect(() => tm.proceed(-1)).toThrowError();
+    expect(() => tm.proceed(-1)).toThrow();
 
-    expect(() => tm.proceed(0)).not.toThrowError();
-    expect(() => tm.proceed(1)).not.toThrowError();
+    expect(() => tm.proceed(0)).not.toThrow();
+    expect(() => tm.proceed(1)).not.toThrow();
     //複数候補
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
 
     tm.start([[Blank, A, D], 0, q1]);
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
     //候補なし
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
 
-    let tm2 = new WriteFirstTuringMachine(Blank, ruleset);
+    const tm2 = new WriteFirstTuringMachine(Blank, ruleset);
     tm2.start([[A, B], 0, q2]);
     //複数候補(2)
-    expect(() => tm2.proceed()).toThrowError();
+    expect(() => tm2.proceed()).toThrow();
 
-    let tm3 = new WriteFirstTuringMachine(Blank, ruleset);
+    const tm3 = new WriteFirstTuringMachine(Blank, ruleset);
     tm3.start([[], 0, q3]);
     //候補なし(2)
-    expect(() => tm3.proceed()).toThrowError();
+    expect(() => tm3.proceed()).toThrow();
   });
   it("CloneTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
-    let ruleset = WriteFirstTMRuleSet.builder()
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+    const ruleset = WriteFirstTMRuleSet.builder()
       .state(q1, A, "R")
       .add(A, q1)
       .add(B, q2)
@@ -332,7 +332,7 @@ describe("WriteFirstTuringMachine", function () {
       .add(Blank, qf)
       .build();
 
-    let tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
+    const tm = new WriteFirstTuringMachine(Blank, ruleset, qf);
     expect(tm.clone().asTuple()).toEqual(tm.asTuple());
   });
 });

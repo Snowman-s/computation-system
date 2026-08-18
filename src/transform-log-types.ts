@@ -9,7 +9,7 @@ import {
   FractranFraction,
 } from "./computation-system";
 
-export type Tag2SystemToTuringMachine218TransformLog = {
+export interface Tag2SystemToTuringMachine218TransformLog {
   transformTable: {
     readonly letter: TagSystemLetter;
     readonly output: TagSystemWord | "STOP";
@@ -17,9 +17,9 @@ export type Tag2SystemToTuringMachine218TransformLog = {
     readonly charRepresent: TMSymbol[];
     readonly outRepresent: TMSymbol[];
   }[];
-};
+}
 
-export type TuringMachine2SymbolToWriteFirstTuringMachineTransformLog = {
+export interface TuringMachine2SymbolToWriteFirstTuringMachineTransformLog {
   readonly symbol0: TMSymbol;
   readonly symbol1: TMSymbol;
   readonly initStateCandinates: readonly {
@@ -40,9 +40,9 @@ export type TuringMachine2SymbolToWriteFirstTuringMachineTransformLog = {
     };
     readonly transformedRule: WriteFirstTMRule;
   }[];
-};
+}
 
-export type WriteFirstTM2SymbolToTagSystemTransformLog = {
+export interface WriteFirstTM2SymbolToTagSystemTransformLog {
   letterX: TagSystemLetter;
   symbol0: TMSymbol;
   symbol1: TMSymbol;
@@ -54,16 +54,16 @@ export type WriteFirstTM2SymbolToTagSystemTransformLog = {
     alpha: TagSystemLetter;
     beta: TagSystemLetter;
   }[];
-};
+}
 
-export type TuringMachineTo2SymbolTransformLog = {
+export interface TuringMachineTo2SymbolTransformLog {
   l: number;
   blank: { original: TMSymbol; to: TMSymbol[] };
   symbolCorrespondenceTable: { original: TMSymbol; to: TMSymbol[] }[];
   stateCorrespondenceTable: { original: TMState; to: TMState }[];
-};
+}
 
-export type TuringMachine2SymbolToMinskyRegisterMachineTransformLog = {
+export interface TuringMachine2SymbolToMinskyRegisterMachineTransformLog {
   states: Map<TMState, {
     stateNumber: number;
     instructionNumber: number;
@@ -73,7 +73,7 @@ export type TuringMachine2SymbolToMinskyRegisterMachineTransformLog = {
   programs: MinskyRegisterMachineInstruction[];
 }
 
-export type MinskyRegisterMachineToFractranTransformLog = {
+export interface MinskyRegisterMachineToFractranTransformLog {
   primeCorrespondenceTable: ({
     readonly type: "register";
     readonly registerIndex: number;

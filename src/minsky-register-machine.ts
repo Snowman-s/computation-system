@@ -14,7 +14,7 @@ export type MinskyRegisterMachineInstruction =
 /**
  * Represents a Minsky Register Machine program as a tuple containing the program and number of registers.
  */
-export type MinskyRegisterMachineTuple = {
+export interface MinskyRegisterMachineTuple {
     readonly program: readonly MinskyRegisterMachineInstruction[];
     readonly numberOfRegisters: number;
 }
@@ -22,7 +22,7 @@ export type MinskyRegisterMachineTuple = {
 /**
  * Represents the current configuration of a Minsky Register Machine computation.
  */
-export type MinskyRegisterMachineConfiguration = {
+export interface MinskyRegisterMachineConfiguration {
     readonly registers: bigint[];
     readonly instructionPointer: number;
 }
@@ -36,7 +36,7 @@ export class MinskyRegisterMachine implements ComputationSystem {
     numberOfRegisters: number;
     registers: bigint[] = [];
     program: MinskyRegisterMachineInstruction[] = [];
-    instructionPointer: number = 0;
+    instructionPointer = 0;
 
     /**
      * Creates a new Minsky Register Machine with the specified number of registers and program.
@@ -57,9 +57,9 @@ export class MinskyRegisterMachine implements ComputationSystem {
         //this.registers = new Array<bigint>(n).fill(BigInt(0));
 
         // check program validity
-        let programLength = program.length;
+        const programLength = program.length;
         for (let i = 0; i < programLength; i++) {
-            let instr = program[i];
+            const instr = program[i];
             switch (instr.type) {
                 case "INC":
                     if (instr.register < 0 || instr.register >= n) {
@@ -141,7 +141,7 @@ export class MinskyRegisterMachine implements ComputationSystem {
         }
 
         for (let s = 0; s < step; s++) {
-            let targetProgram = this.program[this.instructionPointer];
+            const targetProgram = this.program[this.instructionPointer];
             switch (targetProgram.type) {
                 case "INC":
                     this.registers[targetProgram.register]++;

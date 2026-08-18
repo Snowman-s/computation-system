@@ -99,30 +99,30 @@ describe("TagSystemTest", () => {
     expect(() => {
       const emptyRuleSet = TagSystemRuleSet.builder().build();
       new TagSystem(2, emptyRuleSet);
-    }).not.toThrowError();
+    }).not.toThrow();
     expect(() => {
       const emptyRuleSet = TagSystemRuleSet.builder().build();
       new TagSystem(-9, emptyRuleSet);
-    }).toThrowError();
+    }).toThrow();
     expect(() => {
       const emptyRuleSet = TagSystemRuleSet.builder().build();
       new TagSystem(0, emptyRuleSet);
-    }).toThrowError();
+    }).toThrow();
     expect(() => {
       const ruleSet = TagSystemRuleSet.builder().add(A, [A, B]).add(B, [A, A]).build();
       new TagSystem(2, ruleSet).start([[C]]);
-    }).toThrowError();
+    }).toThrow();
 
     const sampleRule = TagSystemRuleSet.builder().add(A, [A, B]).add(B, [A, B]).build();
     const sampleTagSystem = new TagSystem(2, sampleRule);
     expect(sampleTagSystem.getNowWord()).toBe(null);
 
-    expect(() => sampleTagSystem.proceed()).toThrowError();
+    expect(() => sampleTagSystem.proceed()).toThrow();
     expect(sampleTagSystem.getConfiguration()).toBeNull();
     sampleTagSystem.start([[]]);
     expect(sampleTagSystem.getConfiguration()!.word.toString()).toBe("");
-    expect(() => sampleTagSystem.proceed(-9)).toThrowError();
-    expect(() => sampleTagSystem.proceed()).not.toThrowError();
+    expect(() => sampleTagSystem.proceed(-9)).toThrow();
+    expect(() => sampleTagSystem.proceed()).not.toThrow();
     expect(sampleTagSystem.isStopped()).toBe(true);
   });
 });

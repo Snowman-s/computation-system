@@ -4,7 +4,11 @@ import sourceMaps from "rollup-plugin-sourcemaps";
 import typescript from "rollup-plugin-typescript2";
 import json from "@rollup/plugin-json";
 import { terser } from "rollup-plugin-terser";
+import { createRequire } from "node:module";
 
+// Rollup 4 はこの設定ファイルを ESM として読み込むため、
+// CommonJS の require が使えるように createRequire で用意する
+const require = createRequire(import.meta.url);
 const pkg = require("./package.json");
 
 const libraryName = "computation-system";
@@ -21,7 +25,7 @@ export default {
       plugins: [terser()],
     },
     { file: pkg.module, format: "es", sourcemap: true },
-    { file: `dist/${libraryName}.es5.min.js`, format: "es", sourcemap: true, plugins: [terser()] },
+    { file: `dist/${libraryName}.esm.min.js`, format: "es", sourcemap: true, plugins: [terser()] },
   ],
   // Indicate here external modules you don't wanna include in your bundle (i.e.: 'lodash')
   external: [],

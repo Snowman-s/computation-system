@@ -33,9 +33,9 @@ export interface LockedECACells {
   readCellAt(index: number): 0 | 1
 }
 
-export type ECAConfiguration = {
+export interface ECAConfiguration {
   lockedCells: LockedECACells;
-};
+}
 
 class ECACells {
   tapeImpl: SimpleTape<0 | 1>
@@ -70,7 +70,7 @@ class ECACells {
     return this.tapeImpl.read(index);
   }
   writeCellAt(index: number, cell: 0 | 1) {
-    let range = this.tapeImpl.getRange();
+    const range = this.tapeImpl.getRange();
     if ((!this.infiniteLeft) && index < range.min) {
       return
     } else if ((!this.infiniteRight) && range.max <= index) {
@@ -80,7 +80,7 @@ class ECACells {
   }
 
   locked() {
-    let cloned = new ECACells(this.tapeImpl, this.infiniteLeft, this.infiniteRight)
+    const cloned = new ECACells(this.tapeImpl, this.infiniteLeft, this.infiniteRight)
 
     return new (class implements LockedECACells {
       getCenterRange() {
@@ -197,7 +197,7 @@ export class ElementaryCellularAutomaton implements ComputationSystem {
     if (this.cells === null) {
       throw new Error("You must call start() before proceed().");
     }
-    let range = this.cells.getCenterRange();
+    const range = this.cells.getCenterRange();
     for (let s = 0; s < step; s++) {
       let before = this.emptyCell
       for (let i = range.min - 1; i < range.max + 1; i++) {

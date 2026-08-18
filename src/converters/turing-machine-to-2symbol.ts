@@ -179,7 +179,7 @@ export class TuringMachineTo2SymbolTransformElement
         builder.state(toNewStateTLR("T", S, splited_s));
 
         // 各シンボルについて、そのシンボルはあるのだろうか？
-        const symbolIndex0 = parseInt(splited_s.join("") + "0", 2)!;
+        const symbolIndex0 = parseInt(splited_s.join("") + "0", 2);
 
         if (symbolIndex0 <= symbols.length - 1) {
           const candinates = ruleset.getCandinates(S, symbols[symbolIndex0]);
@@ -206,7 +206,7 @@ export class TuringMachineTo2SymbolTransformElement
           }
         }
 
-        const symbolIndex1 = parseInt(splited_s.join("") + "1", 2)!;
+        const symbolIndex1 = parseInt(splited_s.join("") + "1", 2);
         if (symbolIndex1 <= symbols.length - 1) {
           const candinates = ruleset.getCandinates(S, symbols[symbolIndex1]);
           if (candinates.length > 1) throw new Error();

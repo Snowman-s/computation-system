@@ -27,9 +27,9 @@ import {
 describe("ConverterTest", () => {
   describe("2 or more elements", () => {
     test("positive", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-      let ruleset = TMRuleSet.builder()
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+      const ruleset = TMRuleSet.builder()
         .state(q1)
         .add(A, B, "R")
         .add(B, A, "L", q2)
@@ -87,9 +87,9 @@ describe("ConverterTest", () => {
       const configFirst: TagSystemConfiguration = transformHierarchy.getConfiguration(0)!;
       expect(configFirst.word.asLetters()).toEqual([A, B, B]);
 
-      let validInterpretations: TagSystemWord[] = [];
+      const validInterpretations: TagSystemWord[] = [];
       while (!transformHierarchy.stopped()) {
-        let word = transformHierarchy.getConfiguration(0)?.word;
+        const word = transformHierarchy.getConfiguration(0)?.word;
         if (word !== undefined) {
           validInterpretations.push(word);
         }
@@ -121,9 +121,9 @@ describe("ConverterTest", () => {
       expect(transformHierarchy.asIndependantSystem(0)).toBeInstanceOf(TagSystem);
       expect(transformHierarchy.asIndependantSystem(1)).toBeInstanceOf(TuringMachine);
 
-      let table = transformHierarchy.getTransFormLogOf(0)!.transformTable;
+      const table = transformHierarchy.getTransFormLogOf(0)!.transformTable;
 
-      for (let row of table) {
+      for (const row of table) {
         switch (row.letter.value) {
           case "A":
             //その文字は何を出力するか？
@@ -171,7 +171,7 @@ describe("ConverterTest", () => {
 
       const transformHierarchy = createHierarchy(Converter.tag2SystemToTuringMachine218());
 
-      expect(() => transformHierarchy.start(tagSystem, [[B, A, A]])).toThrowError();
+      expect(() => transformHierarchy.start(tagSystem, [[B, A, A]])).toThrow();
 
       expect(transformHierarchy.getTuple(0)).toBeNull();
       expect(transformHierarchy.getConfiguration(0)).toBeNull();
@@ -182,7 +182,7 @@ describe("ConverterTest", () => {
       expect(transformHierarchy.getTuple(0)).toEqual(validTagSystem.asTuple());
       expect(transformHierarchy.asIndependantSystem(0)).not.toBeNull();
 
-      expect(() => transformHierarchy.getTransFormLogOf(1)).toThrowError();
+      expect(() => transformHierarchy.getTransFormLogOf(1)).toThrow();
     });
     describe("unit", () => {
       test("interpretConfigration() returns null if unexpected params", () => {
@@ -213,7 +213,7 @@ describe("ConverterTest", () => {
 
         // 入力が不完全に終わる
         const tuple = element.asTuple()!;
-        const letter = new Map<String, TMSymbol>();
+        const letter = new Map<string, TMSymbol>();
         tuple.symbolSet.forEach((symbol) => {
           letter.set(symbol.value, symbol);
         });
@@ -254,20 +254,20 @@ describe("ConverterTest", () => {
         const tagSystem = new TagSystem(2, tagSystemRuleSet);
 
         // bind() 前
-        expect(() => element.interpretInput([[A, B]])).toThrowError();
+        expect(() => element.interpretInput([[A, B]])).toThrow();
 
         element.bind(tagSystem.asTuple());
 
         // 知らない文字
-        expect(() => element.interpretInput([[{ value: "A" }]])).toThrowError();
+        expect(() => element.interpretInput([[{ value: "A" }]])).toThrow();
       });
     });
   });
   describe("TuringMachine2SymbolToWriteFirstTuringMachine", () => {
     test("Positive", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-      let ruleset = TMRuleSet.builder()
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+      const ruleset = TMRuleSet.builder()
         .state(q1)
         .add(A, B, "R")
         .add(B, A, "R", q2)
@@ -276,7 +276,7 @@ describe("ConverterTest", () => {
         .state(qf)
         .build();
 
-      let tm = new TuringMachine(A, ruleset, q1, qf);
+      const tm = new TuringMachine(A, ruleset, q1, qf);
 
       const hierarchy = createHierarchy(Converter.turingMachine2SymbolToWriteFirstTuringMachine());
       hierarchy.start(tm, [[A, A, B, B], 0]);
@@ -294,9 +294,9 @@ describe("ConverterTest", () => {
       expect(hierarchy.getConfiguration(1)?.tape.toString()).toMatch(/…A+BBABA+…/);
     });
     test("WorkIfBlankSymbolChanged", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-      let ruleset = TMRuleSet.builder()
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+      const ruleset = TMRuleSet.builder()
         .state(q1)
         .add(A, B, "R")
         .add(B, A, "R", q2)
@@ -305,7 +305,7 @@ describe("ConverterTest", () => {
         .state(qf)
         .build();
 
-      let tm = new TuringMachine(B, ruleset, q1, qf);
+      const tm = new TuringMachine(B, ruleset, q1, qf);
 
       const hierarchy = createHierarchy(Converter.turingMachine2SymbolToWriteFirstTuringMachine());
       expect(hierarchy.getTransFormLogOf(0)).toBeNull();
@@ -321,9 +321,9 @@ describe("ConverterTest", () => {
       expect(hierarchy.getTransFormLogOf(0)).not.toBeNull();
     });
     test("Monkey", () => {
-      let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
-      let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-      let invalidRuleset = TMRuleSet.builder()
+      const [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+      const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+      const invalidRuleset = TMRuleSet.builder()
         .state(q1)
         .add(A, B, "R")
         .add(B, A, "R", q2)
@@ -331,9 +331,9 @@ describe("ConverterTest", () => {
         .add(B, C, "R", qf)
         .state(qf)
         .build();
-      let invalidTM = new TuringMachine(A, invalidRuleset, q1, qf);
+      const invalidTM = new TuringMachine(A, invalidRuleset, q1, qf);
 
-      let validRuleset = TMRuleSet.builder()
+      const validRuleset = TMRuleSet.builder()
         .state(q1)
         .add(A, B, "R")
         .add(B, A, "R", q2)
@@ -341,10 +341,10 @@ describe("ConverterTest", () => {
         .add(B, B, "R", qf)
         .state(qf)
         .build();
-      let validTM = new TuringMachine(A, validRuleset, q1, qf);
+      const validTM = new TuringMachine(A, validRuleset, q1, qf);
 
       const hierarchy = createHierarchy(Converter.turingMachine2SymbolToWriteFirstTuringMachine());
-      expect(() => hierarchy.start(invalidTM, [[A, A, B, B], 0])).toThrowError();
+      expect(() => hierarchy.start(invalidTM, [[A, A, B, B], 0])).toThrow();
 
       expect(hierarchy.getConfiguration(1)).toBeNull();
       expect(hierarchy.asIndependantSystem(1)).toBeNull();
@@ -359,9 +359,9 @@ describe("ConverterTest", () => {
       test("interpretConfigration() returns null if unexpected params", () => {
         const element = Converter.turingMachine2SymbolToWriteFirstTuringMachine();
 
-        let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
-        let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-        let ruleset = TMRuleSet.builder()
+        const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+        const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+        const ruleset = TMRuleSet.builder()
           .state(q1)
           .add(A, B, "R")
           .add(B, A, "R", q2)
@@ -369,7 +369,7 @@ describe("ConverterTest", () => {
           .add(B, B, "R", qf)
           .state(qf)
           .build();
-        let tm = new TuringMachine(A, ruleset, q1, qf);
+        const tm = new TuringMachine(A, ruleset, q1, qf);
         tm.start([[A, A, B, B], 0]);
 
         // bind()前
@@ -383,9 +383,9 @@ describe("ConverterTest", () => {
       test("interpretInput() throws Error if unexpected params", () => {
         const element = Converter.turingMachine2SymbolToWriteFirstTuringMachine();
 
-        let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
-        let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-        let ruleset = TMRuleSet.builder()
+        const [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+        const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+        const ruleset = TMRuleSet.builder()
           .state(q1)
           .add(A, B, "R")
           .add(B, A, "R", q2)
@@ -393,24 +393,24 @@ describe("ConverterTest", () => {
           .add(B, B, "R", qf)
           .state(qf)
           .build();
-        let tm = new TuringMachine(A, ruleset, q1, qf);
+        const tm = new TuringMachine(A, ruleset, q1, qf);
 
         // bind()前
-        expect(() => element.interpretInput([[A, A, B, B], 0])).toThrowError();
+        expect(() => element.interpretInput([[A, A, B, B], 0])).toThrow();
 
         element.bind(tm.asTuple());
 
         // 入力が、最初のヘッド位置に、bind()で与えられていない記号を持つ
-        expect(() => element.interpretInput([[C, A, B, B], 0])).toThrowError();
+        expect(() => element.interpretInput([[C, A, B, B], 0])).toThrow();
       });
     });
   });
   describe("WriteFirstTM2SymbolToTagSystem", () => {
     test("Positive", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let ruleset = WriteFirstTMRuleSet.builder()
+      const ruleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -422,9 +422,9 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, ruleset, qf);
+      const tm = new WriteFirstTuringMachine(A, ruleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       hierarchy.start(tm, [[A, B, B], 0, q1]);
 
@@ -443,16 +443,16 @@ describe("ConverterTest", () => {
 
       const initStateOutput = hierarchy
         .getTuple(1)
-        ?.ruleSet.getCandinates(initStateTransformData.A!);
+        ?.ruleSet.getCandinates(initStateTransformData.A);
 
       if (initStateOutput?.stop == true) fail();
       expect(initStateOutput?.writeWord.asLetters()[0].value).toBe("C_0");
     });
     test("Work if blank symbol is changed with another letter", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let ruleset = WriteFirstTMRuleSet.builder()
+      const ruleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -464,9 +464,9 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(B, ruleset, qf);
+      const tm = new WriteFirstTuringMachine(B, ruleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       hierarchy.start(tm, [[A, B, B], 0, q1]);
 
@@ -480,10 +480,10 @@ describe("ConverterTest", () => {
       expect(tmtape?.toString()).toMatch(/…B+BB+…/);
     });
     test("Work if head position > 0", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let ruleset = WriteFirstTMRuleSet.builder()
+      const ruleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -495,9 +495,9 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, ruleset, qf);
+      const tm = new WriteFirstTuringMachine(A, ruleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
       // ABA'BB, q1 -> ABAB'B, q2 -> ABA'AB, q3 -> ABBBB', qf
       hierarchy.start(tm, [[A, B, A, B, B], 2, q1]);
@@ -514,10 +514,10 @@ describe("ConverterTest", () => {
       expect(tmtape?.toString()).toMatch(/…A+BBBBA+…/);
     });
     test("Error if any state(s) have no corresponding rules", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, q4, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "q4", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, q4, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "q4", "qf");
 
-      let ruleset = WriteFirstTMRuleSet.builder()
+      const ruleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -529,17 +529,17 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, ruleset, qf);
+      const tm = new WriteFirstTuringMachine(A, ruleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
-      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
     });
     test("Error if any state(s) have 2 or more corresponding rules", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let ruleset = WriteFirstTMRuleSet.builder()
+      const ruleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -554,17 +554,17 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, ruleset, qf);
+      const tm = new WriteFirstTuringMachine(A, ruleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
-      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
     });
     test("Error if any state(s) have incomplete read-move rule", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let rulesetWithoutA = WriteFirstTMRuleSet.builder()
+      const rulesetWithoutA = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -575,13 +575,13 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, rulesetWithoutA, qf);
+      const tm = new WriteFirstTuringMachine(A, rulesetWithoutA, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
-      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
 
-      let rulesetWithoutB = WriteFirstTMRuleSet.builder()
+      const rulesetWithoutB = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -592,15 +592,15 @@ describe("ConverterTest", () => {
         .add(A, q3)
         .build();
 
-      let tm2 = new WriteFirstTuringMachine(A, rulesetWithoutB, qf);
+      const tm2 = new WriteFirstTuringMachine(A, rulesetWithoutB, qf);
 
-      expect(() => hierarchy.start(tm2, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm2, [[A, B, B], 0, q1])).toThrow();
     });
     test('Error if any state(s) have "HALT" rule', () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let ruleset = WriteFirstTMRuleSet.builder()
+      const ruleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -612,11 +612,11 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, ruleset, qf);
+      const tm = new WriteFirstTuringMachine(A, ruleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
-      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
     });
     test("Tuple and config is null before executed", () => {
       let hierarchy: ITransformHierarchy<
@@ -632,22 +632,22 @@ describe("ConverterTest", () => {
       expect(hierarchy.getConfiguration(1)).toBeNull();
     });
     test("Error if not init-state used in TMRule", () => {
-      let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-      let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+      const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+      const [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
 
-      let ruleset = WriteFirstTMRuleSet.builder().state(q2, A, "R").add(A, q2).add(B, q2).build();
+      const ruleset = WriteFirstTMRuleSet.builder().state(q2, A, "R").add(A, q2).add(B, q2).build();
 
-      let tm = new WriteFirstTuringMachine(A, ruleset, q2);
+      const tm = new WriteFirstTuringMachine(A, ruleset, q2);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
-      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
     });
     test("Error if 3-alphabet used for TMRule", () => {
-      let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
-      let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+      const [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+      const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-      let errorRuleset = WriteFirstTMRuleSet.builder()
+      const errorRuleset = WriteFirstTMRuleSet.builder()
         .state(q1, A, "R")
         .add(A, q1)
         .add(B, q2)
@@ -659,21 +659,21 @@ describe("ConverterTest", () => {
         .add(B, qf)
         .build();
 
-      let tm = new WriteFirstTuringMachine(A, errorRuleset, qf);
+      const tm = new WriteFirstTuringMachine(A, errorRuleset, qf);
 
-      let hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
+      const hierarchy = createHierarchy(Converter.writeFirstTM2SymbolToTagSystem());
 
-      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrowError();
+      expect(() => hierarchy.start(tm, [[A, B, B], 0, q1])).toThrow();
     });
 
     describe("unit", () => {
       test("interpretConfigration() returns null if unexpected params", () => {
         const element = Converter.writeFirstTM2SymbolToTagSystem();
 
-        let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-        let [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
+        const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+        const [q1, q2, q3, qf]: TMState[] = TMStateFrom("q1", "q2", "q3", "qf");
 
-        let ruleset = WriteFirstTMRuleSet.builder()
+        const ruleset = WriteFirstTMRuleSet.builder()
           .state(q1, A, "R")
           .add(A, q1)
           .add(B, q2)
@@ -685,7 +685,7 @@ describe("ConverterTest", () => {
           .add(B, qf)
           .build();
 
-        let tm = new WriteFirstTuringMachine(B, ruleset, qf);
+        const tm = new WriteFirstTuringMachine(B, ruleset, qf);
 
         const lettersAsWord = function (i: TagSystemLetter[]) {
           return new (class implements TagSystemWord {
@@ -965,7 +965,7 @@ describe("ConverterTest", () => {
 
       const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
 
-      expect(() => hierarchy.start(invalidTM, [[A, B, C], 0])).toThrowError();
+      expect(() => hierarchy.start(invalidTM, [[A, B, C], 0])).toThrow();
 
       expect(hierarchy.getConfiguration(1)).toBeNull();
       expect(hierarchy.asIndependantSystem(1)).toBeNull();
@@ -1054,12 +1054,12 @@ describe("ConverterTest", () => {
         const tm = new TuringMachine(A, ruleset, q1, qf);
 
         // bind()前
-        expect(() => element.interpretInput([[A, B], 0])).toThrowError();
+        expect(() => element.interpretInput([[A, B], 0])).toThrow();
 
         element.bind(tm.asTuple());
 
         // 正常なケース
-        expect(() => element.interpretInput([[A, B], 0])).not.toThrowError();
+        expect(() => element.interpretInput([[A, B], 0])).not.toThrow();
       });
     });
   });

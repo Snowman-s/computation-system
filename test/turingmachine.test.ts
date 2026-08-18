@@ -10,16 +10,16 @@ import {
 
 describe("TMTape", function () {
   it("CreateTapeTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let tape = TMTape.create([A, A, B, B], Blank);
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const tape = TMTape.create([A, A, B, B], Blank);
 
     expect(tape.read(0)).toEqual(A);
     expect(tape.read(2)).toEqual(B);
     expect(tape.read(-5)).toEqual(Blank);
   });
   it("TapeWriteTest", () => {
-    let [A, B, C, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "S");
-    let tape = TMTape.create([A, A, B, B], Blank);
+    const [A, B, C, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "S");
+    const tape = TMTape.create([A, A, B, B], Blank);
 
     tape.write(1, C);
     expect(tape.read(1)).toEqual(C);
@@ -29,8 +29,8 @@ describe("TMTape", function () {
     expect(tape.read(-9)).toEqual(B);
   });
   it("ToStringTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let tape = TMTape.create([A, A, A, A], Blank);
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const tape = TMTape.create([A, A, A, A], Blank);
 
     expect(tape.toString()).toEqual("…SAAAAS…");
     tape.write(1, B);
@@ -43,18 +43,18 @@ describe("TMTape", function () {
 
     expect(tape.toString()).toBe(tape.locked().toString());
 
-    let tape2 = TMTape.create([], Blank);
+    const tape2 = TMTape.create([], Blank);
     expect(tape2.toString()).toEqual("…SS…");
   });
   it("CloneTest", () => {
-    let [A, Blank]: TMSymbol[] = TMSymbolFrom("A", "S");
-    let tape = TMTape.create([A, A, A, A], Blank);
+    const [A, Blank]: TMSymbol[] = TMSymbolFrom("A", "S");
+    const tape = TMTape.create([A, A, A, A], Blank);
 
-    let tape2 = tape.clone();
+    const tape2 = tape.clone();
     tape.write(42, A);
     expect(tape2.read(42)).toBe(Blank);
 
-    let lockedTape = tape.locked();
+    const lockedTape = tape.locked();
     tape.write(-99, A);
     expect(lockedTape.read(-99)).toBe(Blank);
   });
@@ -62,8 +62,8 @@ describe("TMTape", function () {
 
 describe("TMRule", () => {
   it("NormalTMRuleTest", () => {
-    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+    const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    const [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "R")
@@ -93,12 +93,12 @@ describe("TMRule", () => {
     expect(rules3.length).toEqual(0);
   });
   it("MonkeyCreateTest", () => {
-    let [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
-    let [q1]: TMState[] = TMStateFrom("q1");
+    const [A, B, C]: TMSymbol[] = TMSymbolFrom("A", "B", "C");
+    const [q1]: TMState[] = TMStateFrom("q1");
     const builder = TMRuleSet.builder();
 
-    expect(() => builder.add(A, B, "R")).toThrowError();
-    expect(() => builder.addHALT(A)).toThrowError();
+    expect(() => builder.add(A, B, "R")).toThrow();
+    expect(() => builder.addHALT(A)).toThrow();
 
     const ruleset = builder
       .state(q1)
@@ -134,8 +134,8 @@ describe("TMRule", () => {
     expect(rules3[0].move).toEqual("HALT");
   });
   it("ToStringTest", () => {
-    let [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
-    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+    const [A, B]: TMSymbol[] = TMSymbolFrom("A", "B");
+    const [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
     const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "R")
@@ -150,9 +150,9 @@ describe("TMRule", () => {
 
 describe("TuringMachine", function () {
   it("ManuallyProceedTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-    let ruleset = TMRuleSet.builder()
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+    const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "R")
       .add(B, A, "R", q2)
@@ -161,9 +161,9 @@ describe("TuringMachine", function () {
       .state(qf)
       .build();
 
-    let tm = new TuringMachine(Blank, ruleset, q1, qf);
+    const tm = new TuringMachine(Blank, ruleset, q1, qf);
     //スタート前
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
 
     tm.start([[A, A, B, B], 0]);
 
@@ -180,12 +180,12 @@ describe("TuringMachine", function () {
     expect(initialWord[1]).toBe(A);
     expect(initialWord).not.toHaveProperty("write");
     //これ以上TMが動くことは無い
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
   });
   it('Use"HALT"Test', () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
-    let ruleset = TMRuleSet.builder()
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2]: TMState[] = TMStateFrom("q1", "q2");
+    const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "R")
       .add(B, A, "R", q2)
@@ -193,7 +193,7 @@ describe("TuringMachine", function () {
       .addHALT(B)
       .build();
 
-    let tm = new TuringMachine(Blank, ruleset, q1);
+    const tm = new TuringMachine(Blank, ruleset, q1);
     tm.start([[A, A, B, B], 0]);
 
     tm.proceed(3);
@@ -202,30 +202,30 @@ describe("TuringMachine", function () {
     expect(tm.isHalted()).toEqual(true);
     expect(tm.isAccepted()).toEqual(false);
 
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
   });
   it("Zero-LengthTapeTest", () => {
-    let [Blank]: TMSymbol[] = TMSymbolFrom("S");
-    let [q1]: TMState[] = TMStateFrom("q1");
-    let ruleset = TMRuleSet.builder().state(q1).addHALT(Blank).build();
+    const [Blank]: TMSymbol[] = TMSymbolFrom("S");
+    const [q1]: TMState[] = TMStateFrom("q1");
+    const ruleset = TMRuleSet.builder().state(q1).addHALT(Blank).build();
 
-    let tm = new TuringMachine(Blank, ruleset, q1);
+    const tm = new TuringMachine(Blank, ruleset, q1);
     tm.start([[], 0]);
 
-    expect(() => tm.proceed()).not.toThrowError();
+    expect(() => tm.proceed()).not.toThrow();
     expect(tm.isHalted()).toBe(true);
   });
   it("TupleTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, qf]: TMState[] = TMStateFrom("q1", "qf");
-    let ruleset = TMRuleSet.builder()
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, qf]: TMState[] = TMStateFrom("q1", "qf");
+    const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "L")
       .add(B, A, "R")
       .add(Blank, B, "R")
       .build();
 
-    let tm = new TuringMachine(Blank, ruleset, q1, qf);
+    const tm = new TuringMachine(Blank, ruleset, q1, qf);
 
     const tuple = tm.asTuple();
     expect(tuple.acceptState).toEqual(qf);
@@ -242,9 +242,9 @@ describe("TuringMachine", function () {
     expect(tuple.stateSet).toContain(qf);
   });
   it("GetConfigurationTest", () => {
-    let [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
-    let [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
-    let ruleset = TMRuleSet.builder()
+    const [A, B, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "S");
+    const [q1, q2, qf]: TMState[] = TMStateFrom("q1", "q2", "qf");
+    const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "R")
       .add(B, A, "R", q2)
@@ -253,9 +253,9 @@ describe("TuringMachine", function () {
       .state(qf)
       .build();
 
-    let tm = new TuringMachine(Blank, ruleset, q1, qf);
+    const tm = new TuringMachine(Blank, ruleset, q1, qf);
     //スタート前
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
     const beforeConfig = tm.getConfiguration();
     expect(beforeConfig).toBeNull();
 
@@ -271,9 +271,9 @@ describe("TuringMachine", function () {
     expect(afterConfig!.tape.read(2)).toBe(A);
   });
   it("MonkeyTuringMachineTest", () => {
-    let [A, B, C, D, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "D", "S");
-    let [q1]: TMState[] = TMStateFrom("q1");
-    let ruleset = TMRuleSet.builder()
+    const [A, B, C, D, Blank]: TMSymbol[] = TMSymbolFrom("A", "B", "C", "D", "S");
+    const [q1]: TMState[] = TMStateFrom("q1");
+    const ruleset = TMRuleSet.builder()
       .state(q1)
       .add(A, B, "L")
       .add(B, A, "R")
@@ -282,19 +282,19 @@ describe("TuringMachine", function () {
       .add(Blank, B, "R")
       .build();
 
-    let tm = new TuringMachine(Blank, ruleset, q1);
+    const tm = new TuringMachine(Blank, ruleset, q1);
     tm.start([[A, C], 0]);
 
-    expect(() => tm.proceed(-1)).toThrowError();
+    expect(() => tm.proceed(-1)).toThrow();
 
-    expect(() => tm.proceed(0)).not.toThrowError();
-    expect(() => tm.proceed(3)).not.toThrowError();
+    expect(() => tm.proceed(0)).not.toThrow();
+    expect(() => tm.proceed(3)).not.toThrow();
     //複数候補
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
 
     tm.start([[Blank, A, D], 1]);
-    expect(() => tm.proceed(3)).not.toThrowError();
+    expect(() => tm.proceed(3)).not.toThrow();
     //候補なし
-    expect(() => tm.proceed()).toThrowError();
+    expect(() => tm.proceed()).toThrow();
   });
 });

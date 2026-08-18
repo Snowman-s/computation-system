@@ -70,7 +70,7 @@ export class SimpleTape<S> {
 
   public toString() {
     let str = "…" + this.strFunc(this.blank);
-    for (let s of this.data) {
+    for (const s of this.data) {
       str += this.strFunc(s)
     }
     return str + this.strFunc(this.blank) + "…";

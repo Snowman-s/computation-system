@@ -5,11 +5,11 @@ import { ComputationSystem } from "./computation-system";
 /**
  * The turing machine's "state", or in other words, what determines which rules are executed.
  */
-export type TMState = { readonly value: string; readonly meaning: "state" };
+export interface TMState { readonly value: string; readonly meaning: "state" }
 /**
  * The turing machine's symbols on the tape.
  */
-export type TMSymbol = { readonly value: string; readonly meaning: "symbol" };
+export interface TMSymbol { readonly value: string; readonly meaning: "symbol" }
 
 /**
  * Create TMState list with each element of strs as its representation.
@@ -57,17 +57,17 @@ export type TMRuleOutput =
  * What indicates the operation of the head of a Turing machine
  * @see {@link TMRuleSet}
  */
-export type TMRule = {
+export interface TMRule {
   readonly nowState: TMState;
   readonly read: TMSymbol;
   readonly out: TMRuleOutput;
-};
+}
 
-export type TMConfiguration = {
+export interface TMConfiguration {
   nowState: TMState;
   tape: ILockedTMTape;
   headPosition: number;
-};
+}
 
 class TMEquality {
   static ruleEquals(a: TMRule, b: TMRule) {
@@ -128,6 +128,14 @@ export class TMRuleSet {
   }
 
   /**
+   * Returns all rules registered in this ruleset.
+   * @returns list of the rules
+   */
+  public getAllRules(): readonly TMRule[] {
+    return this.rules;
+  }
+
+  /**
    * Returns all symbols that this rule uses.
    * @returns list of the symbols
    */
@@ -166,7 +174,7 @@ export class TMRuleSet {
    * @returns string representation of this ruleset
    */
   public toString() {
-    let v = function <T>(k: { value: T }) {
+    const v = function <T>(k: { value: T }) {
       return k.value;
     };
     return (
@@ -317,7 +325,7 @@ export class TMTape {
   }
 
   public read(n: number): TMSymbol {
-    return this.data.has(n) ? this.data.get(n)!! : this.blank;
+    return this.data.has(n) ? this.data.get(n)! : this.blank;
   }
 
   public write(n: number, symbol: TMSymbol) {

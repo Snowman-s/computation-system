@@ -195,7 +195,7 @@ class TransformHierarchy<S extends ComputationSystem[], TransformLog extends unk
       inputCopy = elm.interpretInput(inputCopy);
     });
     this.baseSystem = this.elements[this.elements.length - 1].asIndependantSystem() as LastOf<S>;
-    this.baseSystem.start(inputCopy as any);
+    this.baseSystem.start(inputCopy);
 
     this.inputSystemSample = inputSystem.clone() as FirstOf<S>;
   }
@@ -252,7 +252,7 @@ class TransformHierarchy<S extends ComputationSystem[], TransformLog extends unk
       ret = this.elements[system - 1].asIndependantSystem();
     }
 
-    return ret as S[N];
+    return ret;
   }
 
   appendLastAndNewHierarchy<Add extends ComputationSystem, TransformLogAdd>(

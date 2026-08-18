@@ -262,7 +262,7 @@ export class WriteFirstTM2SymbolToTagSystemTransformElement
         })();
 
         const str = (function () {
-          let ret = char + (appendStr.length === 1 ? "_" + appendStr : "_{" + appendStr + "}");
+          const ret = char + (appendStr.length === 1 ? "_" + appendStr : "_{" + appendStr + "}");
           return d ? "{" + ret + "}" + d : ret;
         })();
 
