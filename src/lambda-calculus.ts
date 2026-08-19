@@ -20,6 +20,40 @@ export function LambdaVariableFrom(...strs: string[]): LambdaVariable[] {
 }
 
 /**
+ * A function that decides which fresh variable to use when alpha-converting an abstraction
+ * whose parameter would otherwise capture a free variable being substituted in.
+ * @param variable The abstraction's original parameter, which needs to be renamed.
+ * @param existingVariableNames The display names ({@link LambdaVariable.value}) of every variable
+ *  (bound or free) appearing anywhere in the term currently being reduced, provided so the
+ *  strategy can pick a fresh variable whose display name does not collide with one already
+ *  visible to a human reading the term. This set is read-only: implementations must not mutate it.
+ * @returns The new variable to substitute for "variable" throughout the abstraction's body.
+ */
+export type AlphaConversionStrategy = (
+  variable: LambdaVariable,
+  existingVariableNames: ReadonlySet<string>
+) => LambdaVariable;
+
+/**
+ * The default {@link AlphaConversionStrategy}: appends "'" to the variable's display name,
+ * repeating until the result no longer collides with any name in "existingVariableNames".
+ * @param variable The abstraction's original parameter, which needs to be renamed.
+ * @param existingVariableNames The display names of every variable appearing anywhere in the
+ *  term currently being reduced.
+ * @returns A freshly created variable whose display name is unique among "existingVariableNames".
+ */
+export function defaultAlphaConversionStrategy(
+  variable: LambdaVariable,
+  existingVariableNames: ReadonlySet<string>
+): LambdaVariable {
+  let newValue = variable.value + "'";
+  while (existingVariableNames.has(newValue)) {
+    newValue += "'";
+  }
+  return LambdaVariableFrom(newValue)[0];
+}
+
+/**
  * A term of the untyped lambda calculus: a variable, an abstraction (λx.M), or an
  * application (M N).
  *
@@ -91,6 +125,15 @@ export class LambdaCalculus implements ComputationSystem {
   private term: LambdaTerm | null = null;
 
   /**
+   * @param alphaConversionStrategy Decides which fresh variable to use whenever a substitution
+   *  needs to alpha-convert an abstraction to avoid variable capture. Defaults to
+   *  {@link defaultAlphaConversionStrategy}.
+   */
+  public constructor(
+    private readonly alphaConversionStrategy: AlphaConversionStrategy = defaultAlphaConversionStrategy
+  ) {}
+
+  /**
    * Initiates processing for a given term.
    * @param term The term to reduce.
    */
@@ -118,7 +161,8 @@ export class LambdaCalculus implements ComputationSystem {
 
     let currentTerm = this.term;
     for (let i = 0; i < step; i++) {
-      const { term, stopped } = this.betaReduce(currentTerm);
+      const existingVariableNames = this.collectVariableNames(currentTerm);
+      const { term, stopped } = this.betaReduce(currentTerm, existingVariableNames);
       currentTerm = term;
       if (stopped) {
         break;
@@ -127,30 +171,64 @@ export class LambdaCalculus implements ComputationSystem {
     this.term = currentTerm;
   }
 
-  private betaReduce(term: LambdaTerm): { term: LambdaTerm, stopped: boolean } {
+  /**
+   * Performs one normal-order beta reduction step.
+   * @param term The term to reduce.
+   * @param existingVariableNames The display names of every variable appearing anywhere in the
+   *  whole term being reduced this step (i.e. the term originally passed to this method, before
+   *  recursing into subterms). Forwarded unchanged through recursion and into
+   *  {@link LambdaCalculus.substitute} so that {@link LambdaCalculus.alphaConversionStrategy} can
+   *  see the full picture, not just the subterm currently being visited.
+   * @returns The term after performing at most one reduction, and whether it was already in
+   *  beta-normal form (in which case "term" is returned unchanged).
+   */
+  private betaReduce(
+    term: LambdaTerm,
+    existingVariableNames: ReadonlySet<string>
+  ): { term: LambdaTerm, stopped: boolean } {
     switch (term.type) {
       case "variable":
         return { term, stopped: true };
       case "abstraction":
-        const bodyResult = this.betaReduce(term.body);
+        const bodyResult = this.betaReduce(term.body, existingVariableNames);
         return { term: LambdaAbstraction(term.parameter, bodyResult.term), stopped: bodyResult.stopped };
       case "application":
         if (term.func.type === "abstraction") {
           // Perform beta reduction
-          const substitutedBody = this.substitute(term.func.body, term.func.parameter, term.argument);
+          const substitutedBody = this.substitute(
+            term.func.body,
+            term.func.parameter,
+            term.argument,
+            existingVariableNames
+          );
           return { term: substitutedBody, stopped: false };
         } else {
-          const funcResult = this.betaReduce(term.func);
+          const funcResult = this.betaReduce(term.func, existingVariableNames);
           if (!funcResult.stopped) {
             return { term: LambdaApplication(funcResult.term, term.argument), stopped: false };
           }
-          const argumentResult = this.betaReduce(term.argument);
+          const argumentResult = this.betaReduce(term.argument, existingVariableNames);
           return { term: LambdaApplication(funcResult.term, argumentResult.term), stopped: argumentResult.stopped };
         }
       }
   }
 
-  private substitute(term: LambdaTerm, variable: LambdaVariable, replacement: LambdaTerm): LambdaTerm {
+  /**
+   * Substitutes "replacement" for every free occurrence of "variable" in "term", alpha-converting
+   * bound variables as needed to avoid capturing free variables in "replacement".
+   * @param term The term to substitute into.
+   * @param variable The variable being replaced.
+   * @param replacement The term to substitute in place of "variable".
+   * @param existingVariableNames The display names of every variable appearing anywhere in the
+   *  whole term being reduced this step; see {@link LambdaCalculus.betaReduce}.
+   * @returns "term" with the substitution applied.
+   */
+  private substitute(
+    term: LambdaTerm,
+    variable: LambdaVariable,
+    replacement: LambdaTerm,
+    existingVariableNames: ReadonlySet<string>
+  ): LambdaTerm {
     switch (term.type) {
       case "variable":
         return term.variable === variable ? replacement : term;
@@ -160,16 +238,22 @@ export class LambdaCalculus implements ComputationSystem {
         } else {
           // alpha-convert if the parameter is free in the replacement term
           if (this.isFreeIn(term.parameter, replacement)) {
-            const newParam = LambdaVariableFrom(term.parameter.value + "'")[0];
+            const newParam = this.alphaConversionStrategy(term.parameter, existingVariableNames);
             const newBody = this.alphaConvert(term.body, term.parameter, newParam);
-            return LambdaAbstraction(newParam, this.substitute(newBody, variable, replacement));
+            return LambdaAbstraction(
+              newParam,
+              this.substitute(newBody, variable, replacement, existingVariableNames)
+            );
           }
-          return LambdaAbstraction(term.parameter, this.substitute(term.body, variable, replacement));
+          return LambdaAbstraction(
+            term.parameter,
+            this.substitute(term.body, variable, replacement, existingVariableNames)
+          );
         }
       case "application":
         return LambdaApplication(
-          this.substitute(term.func, variable, replacement),
-          this.substitute(term.argument, variable, replacement)
+          this.substitute(term.func, variable, replacement, existingVariableNames),
+          this.substitute(term.argument, variable, replacement, existingVariableNames)
         );
     }
   }
@@ -201,6 +285,33 @@ export class LambdaCalculus implements ComputationSystem {
       case "application":
         return this.isFreeIn(variable, term.func) || this.isFreeIn(variable, term.argument);
     }
+  }
+
+  /**
+   * Collects names rather than variable objects because {@link AlphaConversionStrategy} only
+   * needs to avoid display-level collisions, not object-identity ones (see {@link LambdaVariable}).
+   * @param term The term to walk.
+   * @returns A set of every distinct variable name ({@link LambdaVariable.value}) appearing in "term".
+   */
+  private collectVariableNames(term: LambdaTerm): Set<string> {
+    const names = new Set<string>();
+    const visit = (t: LambdaTerm) => {
+      switch (t.type) {
+        case "variable":
+          names.add(t.variable.value);
+          break;
+        case "abstraction":
+          names.add(t.parameter.value);
+          visit(t.body);
+          break;
+        case "application":
+          visit(t.func);
+          visit(t.argument);
+          break;
+      }
+    };
+    visit(term);
+    return names;
   }
 
   /**
@@ -260,7 +371,7 @@ export class LambdaCalculus implements ComputationSystem {
   }
 
   public clone(): LambdaCalculus {
-    return new LambdaCalculus();
+    return new LambdaCalculus(this.alphaConversionStrategy);
   }
 
   /**

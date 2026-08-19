@@ -1,9 +1,11 @@
 import {
+  AlphaConversionStrategy,
   LambdaAbstraction,
   LambdaApplication,
   LambdaCalculus,
   LambdaVariableFrom,
   LambdaVariableTerm,
+  defaultAlphaConversionStrategy,
   lambdaTermToString,
 } from "../src/computation-system";
 
@@ -118,6 +120,86 @@ describe("LambdaCalculus", () => {
 
     lc.start(LambdaVariableTerm(x));
     expect(cloned.getConfiguration()).toBeNull();
+  });
+
+  it("uses a custom AlphaConversionStrategy's returned variable when alpha-converting", () => {
+    // Same capture-avoidance scenario as above: (λx.λy.x) y
+    const [x, y] = LambdaVariableFrom("x", "y");
+    const term = LambdaApplication(
+      LambdaAbstraction(x, LambdaAbstraction(y, LambdaVariableTerm(x))),
+      LambdaVariableTerm(y)
+    );
+    const [customReplacement] = LambdaVariableFrom("fresh");
+    const strategy: AlphaConversionStrategy = jest.fn(() => customReplacement);
+
+    const lc = new LambdaCalculus(strategy);
+    lc.start(term);
+    lc.proceed(1);
+
+    const reduced = lc.getConfiguration()!.term;
+    expect(reduced.type).toEqual("abstraction");
+    if (reduced.type === "abstraction") {
+      expect(reduced.parameter).toBe(customReplacement);
+    }
+  });
+
+  it("passes every variable name in the current term as existingVariableNames to the strategy", () => {
+    // (λx.λy.x) y — the strategy should see "x" and "y" among existingVariableNames
+    // at the moment it is asked to rename the outer "x".
+    const [x, y] = LambdaVariableFrom("x", "y");
+    const term = LambdaApplication(
+      LambdaAbstraction(x, LambdaAbstraction(y, LambdaVariableTerm(x))),
+      LambdaVariableTerm(y)
+    );
+
+    let seenExistingVariableNames: ReadonlySet<string> | null = null;
+    const strategy: AlphaConversionStrategy = (variable, existingVariableNames) => {
+      seenExistingVariableNames = existingVariableNames;
+      return defaultAlphaConversionStrategy(variable, existingVariableNames);
+    };
+
+    const lc = new LambdaCalculus(strategy);
+    lc.start(term);
+    lc.proceed(1);
+
+    expect(seenExistingVariableNames).not.toBeNull();
+    expect(seenExistingVariableNames!.has("x")).toEqual(true);
+    expect(seenExistingVariableNames!.has("y")).toEqual(true);
+  });
+
+  it("clone should carry over the custom AlphaConversionStrategy", () => {
+    const [x, y] = LambdaVariableFrom("x", "y");
+    const [customReplacement] = LambdaVariableFrom("fresh");
+    const strategy: AlphaConversionStrategy = jest.fn(() => customReplacement);
+    const term = LambdaApplication(
+      LambdaAbstraction(x, LambdaAbstraction(y, LambdaVariableTerm(x))),
+      LambdaVariableTerm(y)
+    );
+
+    const lc = new LambdaCalculus(strategy);
+    const cloned = lc.clone();
+    cloned.start(term);
+    cloned.proceed(1);
+
+    const reduced = cloned.getConfiguration()!.term;
+    expect(reduced.type).toEqual("abstraction");
+    if (reduced.type === "abstraction") {
+      expect(reduced.parameter).toBe(customReplacement);
+    }
+  });
+});
+
+describe("defaultAlphaConversionStrategy", () => {
+  it("appends \"'\" to the variable's name when there is no collision", () => {
+    const [x] = LambdaVariableFrom("x");
+    const result = defaultAlphaConversionStrategy(x, new Set());
+    expect(result.value).toEqual("x'");
+  });
+
+  it("keeps appending \"'\" until the name no longer collides with existingVariableNames", () => {
+    const [x] = LambdaVariableFrom("x");
+    const result = defaultAlphaConversionStrategy(x, new Set(["x", "x'"]));
+    expect(result.value).toEqual("x''");
   });
 });
 
