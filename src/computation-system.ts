@@ -1,5 +1,6 @@
 export * from "./turing-machine";
 export * from "./tag-system";
+export * from "./lambda-calculus";
 export * from "./elementary-cellular-automaton";
 export * from "./write-first-turing-machine";
 export * from "./fractran";
