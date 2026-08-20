@@ -111,6 +111,150 @@ export function lambdaTermToString(term: LambdaTerm): string {
   }
 }
 
+/**
+ * Returns whether "variable" occurs free (i.e. unbound) anywhere in "term".
+ *
+ * @remarks
+ * Shared by {@link substitute} (both {@link LambdaCalculus} and {@link DeterministicLambdaCalculus}
+ * rely on it to decide when an abstraction's parameter needs alpha-converting) and by nothing else,
+ * so it is not exported.
+ *
+ * @param variable The variable to search for.
+ * @param term The term to search.
+ * @returns True if "variable" has a free occurrence in "term".
+ */
+function isFreeIn(variable: LambdaVariable, term: LambdaTerm): boolean {
+  switch (term.type) {
+    case "variable":
+      return term.variable === variable;
+    case "abstraction":
+      return term.parameter !== variable && isFreeIn(variable, term.body);
+    case "application":
+      return isFreeIn(variable, term.func) || isFreeIn(variable, term.argument);
+  }
+}
+
+/**
+ * Replaces every occurrence of "oldVar" with "newVar" throughout "term".
+ *
+ * @remarks
+ * Used by {@link substitute} to rename an abstraction's bound parameter (and every occurrence of
+ * it in the abstraction's body) before substituting into that body, so that the substitution
+ * cannot capture a free variable in the replacement term.
+ *
+ * @param term The term to rewrite.
+ * @param oldVar The bound variable being renamed.
+ * @param newVar The fresh variable to rename it to.
+ * @returns "term" with every occurrence of "oldVar" replaced by "newVar".
+ */
+function alphaConvert(term: LambdaTerm, oldVar: LambdaVariable, newVar: LambdaVariable): LambdaTerm {
+  switch (term.type) {
+    case "variable":
+      return term.variable === oldVar ? LambdaVariableTerm(newVar) : term;
+    case "abstraction":
+      if (term.parameter === oldVar) {
+        return LambdaAbstraction(newVar, alphaConvert(term.body, oldVar, newVar));
+      } else {
+        return LambdaAbstraction(term.parameter, alphaConvert(term.body, oldVar, newVar));
+      }
+    case "application":
+      return LambdaApplication(
+        alphaConvert(term.func, oldVar, newVar),
+        alphaConvert(term.argument, oldVar, newVar)
+      );
+  }
+}
+
+/**
+ * Substitutes "replacement" for every free occurrence of "variable" in "term", alpha-converting
+ * bound variables as needed to avoid capturing free variables in "replacement".
+ *
+ * @remarks
+ * Exported because both {@link LambdaCalculus} and {@link DeterministicLambdaCalculus} need it:
+ * it is the one piece of reduction logic (capture-avoiding substitution) whose correctness is
+ * subtle and whose behavior must be identical regardless of which system's evaluation strategy
+ * (full vs. weak) is driving the reduction. The two systems are otherwise independent
+ * {@link ComputationSystem} implementations, not related by inheritance, since their "start" and
+ * "isStopped" contracts differ.
+ *
+ * @param term The term to substitute into.
+ * @param variable The variable being replaced.
+ * @param replacement The term to substitute in place of "variable".
+ * @param existingVariableNames The display names of every variable appearing anywhere in the
+ *  whole term being reduced this step, used to pick a collision-free name when alpha-converting.
+ * @param alphaConversionStrategy Decides which fresh variable to use when alpha-conversion is needed.
+ * @returns "term" with the substitution applied.
+ */
+export function substitute(
+  term: LambdaTerm,
+  variable: LambdaVariable,
+  replacement: LambdaTerm,
+  existingVariableNames: ReadonlySet<string>,
+  alphaConversionStrategy: AlphaConversionStrategy
+): LambdaTerm {
+  switch (term.type) {
+    case "variable":
+      return term.variable === variable ? replacement : term;
+    case "abstraction":
+      if (term.parameter === variable) {
+        return term; // No substitution inside the body of the abstraction
+      } else {
+        // alpha-convert if the parameter is free in the replacement term
+        if (isFreeIn(term.parameter, replacement)) {
+          const newParam = alphaConversionStrategy(term.parameter, existingVariableNames);
+          const newBody = alphaConvert(term.body, term.parameter, newParam);
+          return LambdaAbstraction(
+            newParam,
+            substitute(newBody, variable, replacement, existingVariableNames, alphaConversionStrategy)
+          );
+        }
+        return LambdaAbstraction(
+          term.parameter,
+          substitute(term.body, variable, replacement, existingVariableNames, alphaConversionStrategy)
+        );
+      }
+    case "application":
+      return LambdaApplication(
+        substitute(term.func, variable, replacement, existingVariableNames, alphaConversionStrategy),
+        substitute(term.argument, variable, replacement, existingVariableNames, alphaConversionStrategy)
+      );
+  }
+}
+
+/**
+ * Collects names rather than variable objects because {@link AlphaConversionStrategy} only
+ * needs to avoid display-level collisions, not object-identity ones (see {@link LambdaVariable}).
+ *
+ * @remarks
+ * Exported for the same reason as {@link substitute}: both {@link LambdaCalculus} and
+ * {@link DeterministicLambdaCalculus} recompute this once per {@link ComputationSystem.proceed}
+ * step, over the whole current term, before delegating to their own (differently-strategized)
+ * reduction routine.
+ *
+ * @param term The term to walk.
+ * @returns A set of every distinct variable name ({@link LambdaVariable.value}) appearing in "term".
+ */
+export function collectVariableNames(term: LambdaTerm): Set<string> {
+  const names = new Set<string>();
+  const visit = (t: LambdaTerm) => {
+    switch (t.type) {
+      case "variable":
+        names.add(t.variable.value);
+        break;
+      case "abstraction":
+        names.add(t.parameter.value);
+        visit(t.body);
+        break;
+      case "application":
+        visit(t.func);
+        visit(t.argument);
+        break;
+    }
+  };
+  visit(term);
+  return names;
+}
+
 export interface LambdaCalculusConfiguration { term: LambdaTerm }
 
 /**
@@ -161,7 +305,7 @@ export class LambdaCalculus implements ComputationSystem {
 
     let currentTerm = this.term;
     for (let i = 0; i < step; i++) {
-      const existingVariableNames = this.collectVariableNames(currentTerm);
+      const existingVariableNames = collectVariableNames(currentTerm);
       const { term, stopped } = this.betaReduce(currentTerm, existingVariableNames);
       currentTerm = term;
       if (stopped) {
@@ -176,9 +320,9 @@ export class LambdaCalculus implements ComputationSystem {
    * @param term The term to reduce.
    * @param existingVariableNames The display names of every variable appearing anywhere in the
    *  whole term being reduced this step (i.e. the term originally passed to this method, before
-   *  recursing into subterms). Forwarded unchanged through recursion and into
-   *  {@link LambdaCalculus.substitute} so that {@link LambdaCalculus.alphaConversionStrategy} can
-   *  see the full picture, not just the subterm currently being visited.
+   *  recursing into subterms). Forwarded unchanged through recursion and into {@link substitute}
+   *  so that {@link LambdaCalculus.alphaConversionStrategy} can see the full picture, not just the
+   *  subterm currently being visited.
    * @returns The term after performing at most one reduction, and whether it was already in
    *  beta-normal form (in which case "term" is returned unchanged).
    */
@@ -195,11 +339,12 @@ export class LambdaCalculus implements ComputationSystem {
       case "application":
         if (term.func.type === "abstraction") {
           // Perform beta reduction
-          const substitutedBody = this.substitute(
+          const substitutedBody = substitute(
             term.func.body,
             term.func.parameter,
             term.argument,
-            existingVariableNames
+            existingVariableNames,
+            this.alphaConversionStrategy
           );
           return { term: substitutedBody, stopped: false };
         } else {
@@ -211,107 +356,6 @@ export class LambdaCalculus implements ComputationSystem {
           return { term: LambdaApplication(funcResult.term, argumentResult.term), stopped: argumentResult.stopped };
         }
       }
-  }
-
-  /**
-   * Substitutes "replacement" for every free occurrence of "variable" in "term", alpha-converting
-   * bound variables as needed to avoid capturing free variables in "replacement".
-   * @param term The term to substitute into.
-   * @param variable The variable being replaced.
-   * @param replacement The term to substitute in place of "variable".
-   * @param existingVariableNames The display names of every variable appearing anywhere in the
-   *  whole term being reduced this step; see {@link LambdaCalculus.betaReduce}.
-   * @returns "term" with the substitution applied.
-   */
-  private substitute(
-    term: LambdaTerm,
-    variable: LambdaVariable,
-    replacement: LambdaTerm,
-    existingVariableNames: ReadonlySet<string>
-  ): LambdaTerm {
-    switch (term.type) {
-      case "variable":
-        return term.variable === variable ? replacement : term;
-      case "abstraction":
-        if (term.parameter === variable) {
-          return term; // No substitution inside the body of the abstraction
-        } else {
-          // alpha-convert if the parameter is free in the replacement term
-          if (this.isFreeIn(term.parameter, replacement)) {
-            const newParam = this.alphaConversionStrategy(term.parameter, existingVariableNames);
-            const newBody = this.alphaConvert(term.body, term.parameter, newParam);
-            return LambdaAbstraction(
-              newParam,
-              this.substitute(newBody, variable, replacement, existingVariableNames)
-            );
-          }
-          return LambdaAbstraction(
-            term.parameter,
-            this.substitute(term.body, variable, replacement, existingVariableNames)
-          );
-        }
-      case "application":
-        return LambdaApplication(
-          this.substitute(term.func, variable, replacement, existingVariableNames),
-          this.substitute(term.argument, variable, replacement, existingVariableNames)
-        );
-    }
-  }
-
-  private alphaConvert(term: LambdaTerm, oldVar: LambdaVariable, newVar: LambdaVariable): LambdaTerm {
-    switch (term.type) {
-      case "variable":
-        return term.variable === oldVar ? LambdaVariableTerm(newVar) : term;
-      case "abstraction":
-        if (term.parameter === oldVar) {
-          return LambdaAbstraction(newVar, this.alphaConvert(term.body, oldVar, newVar));
-        } else {
-          return LambdaAbstraction(term.parameter, this.alphaConvert(term.body, oldVar, newVar));
-        }
-      case "application":
-        return LambdaApplication(
-          this.alphaConvert(term.func, oldVar, newVar),
-          this.alphaConvert(term.argument, oldVar, newVar)
-        );
-    }
-  }
-
-  private isFreeIn(variable: LambdaVariable, term: LambdaTerm): boolean {
-    switch (term.type) {
-      case "variable":
-        return term.variable === variable;
-      case "abstraction":
-        return term.parameter !== variable && this.isFreeIn(variable, term.body);
-      case "application":
-        return this.isFreeIn(variable, term.func) || this.isFreeIn(variable, term.argument);
-    }
-  }
-
-  /**
-   * Collects names rather than variable objects because {@link AlphaConversionStrategy} only
-   * needs to avoid display-level collisions, not object-identity ones (see {@link LambdaVariable}).
-   * @param term The term to walk.
-   * @returns A set of every distinct variable name ({@link LambdaVariable.value}) appearing in "term".
-   */
-  private collectVariableNames(term: LambdaTerm): Set<string> {
-    const names = new Set<string>();
-    const visit = (t: LambdaTerm) => {
-      switch (t.type) {
-        case "variable":
-          names.add(t.variable.value);
-          break;
-        case "abstraction":
-          names.add(t.parameter.value);
-          visit(t.body);
-          break;
-        case "application":
-          visit(t.func);
-          visit(t.argument);
-          break;
-      }
-    };
-    visit(term);
-    return names;
   }
 
   /**
