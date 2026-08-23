@@ -122,7 +122,7 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
 
         // d <- z
         const decInstruction = { type: "DEC" as const, register: Z, nextIfNonZero: instructionNumber(1), nextIfZero: -1 };
-        const incInstruction = { type: "INC" as const, register: dMN, next: instructionNumber(-1) };
+        const incInstruction = { type: "INC" as const, register: dMN, next: instructionNumber() };
         programs.push(decInstruction);
         programs.push(incInstruction);
 
@@ -133,7 +133,6 @@ export class TuringMachine2SymbolToMinskyRegisterMachineTransformElement
             throw new Error(`Next state ${nonHaltRule.nextState.value} is not defined.`);
           }
           decInstruction.nextIfZero = nextStateInfo.instructionNumber;
-          incInstruction.next = nextStateInfo.instructionNumber;
         });
       }
     }

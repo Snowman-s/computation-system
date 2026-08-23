@@ -921,6 +921,39 @@ describe("ConverterTest", () => {
       expect(hierarchy.asIndependantSystem(1)).toBeInstanceOf(MinskyRegisterMachine);
     });
 
+    test("Correctly handles moves when the shrinking-side register requires multiple drain iterations (regression for d <- z loopback bug)", () => {
+      const [A, B] = TMSymbolFrom("A", "B");
+      const [q1, qf] = TMStateFrom("q1", "qf");
+
+      const ruleset = TMRuleSet.builder()
+        .state(q1)
+        .add(A, B, "R", qf)
+        .add(B, B, "R", qf)
+        .build();
+
+      const tm = new TuringMachine(A, ruleset, q1, qf);
+
+      const hierarchy = createHierarchy(Converter.turingMachine2symbolToMinskyRegisterMachine());
+
+      // tape: A(head), B, B, B -> N starts at 7, so floor(7/2) = 3 requires
+      // the "d <- z" drain loop to iterate more than once.
+      hierarchy.start(tm, [[A, B, B, B], 0]);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const tmConfig = hierarchy.getConfiguration(0)!;
+      const mrmConfig = hierarchy.getConfiguration(1)!;
+
+      expect(tmConfig.tape.toString()).toBe("…ABBBBA…");
+      expect(tmConfig.nowState).toBe(qf);
+
+      expect(mrmConfig.registers[1]).toBe(BigInt(1)); // M
+      expect(mrmConfig.registers[2]).toBe(BigInt(3)); // N
+      expect(mrmConfig.registers[3]).toBe(BigInt(0)); // Z (must not leak)
+    });
+
     test("Work with symbol1 as blank", () => {
       const [A, B] = TMSymbolFrom("A", "B");
       const [q1, q2, qf] = TMStateFrom("q1", "q2", "qf");
