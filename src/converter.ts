@@ -6,6 +6,7 @@ import {
 } from "./turing-machine";
 import {
   ComputationSystem,
+  DeterministicLambdaCalculus,
   Fractran,
   MinskyRegisterMachine,
   WriteFirstTuringMachine,
@@ -17,6 +18,7 @@ import {
   TuringMachineTo2SymbolTransformLog,
   TuringMachine2SymbolToMinskyRegisterMachineTransformLog,
   MinskyRegisterMachineToFractranTransformLog,
+  TuringMachineToDeterministicLambdaCalculusTransformLog,
 } from "./transform-log-types";
 import { Tag2SystemToTuringMachine218TransformElement } from "./converters/tag2-system-to-turing-machine-218";
 import { TuringMachine2SymbolToWriteFirstTuringMachineTransformElement } from "./converters/turing-machine-2symbol-to-write-first-turing-machine";
@@ -24,6 +26,7 @@ import { WriteFirstTM2SymbolToTagSystemTransformElement } from "./converters/wri
 import { TuringMachineTo2SymbolTransformElement } from "./converters/turing-machine-to-2symbol";
 import { TuringMachine2SymbolToMinskyRegisterMachineTransformElement } from "./converters/turing-machine-2symbol-to-minsky-register-machine";
 import { MinskyRegisterMachineToFractranTransformElement } from "./converters/minsky-register-machine-to-fractran";
+import { TuringMachineToDeterministicLambdaCalculusTransformElement } from "./converters/turing-machine-to-deterministic-lambda-calculus";
 
 export class Converter {
   /* istanbul ignore next */
@@ -88,6 +91,17 @@ export class Converter {
     MinskyRegisterMachineToFractranTransformLog
   > {
     return new MinskyRegisterMachineToFractranTransformElement();
+  }
+
+  /**
+   * @see U. Dal Lago and B. Accattoli, "Encoding Turing Machines into the Deterministic λ-Calculus," arXiv:1711.10078, 2017.
+   */
+  public static turingMachineToDeterministicLambdaCalculus(): ITransformElement<
+    TuringMachine,
+    DeterministicLambdaCalculus,
+    TuringMachineToDeterministicLambdaCalculusTransformLog
+  > {
+    return new TuringMachineToDeterministicLambdaCalculusTransformElement();
   }
 }
 

@@ -22,6 +22,10 @@ import {
   Fractran,
   FractranFraction,
   FractranNumber,
+  DeterministicLambdaCalculus,
+  LambdaVariableFrom,
+  LambdaAbstraction,
+  LambdaVariableTerm,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -1269,6 +1273,233 @@ describe("ConverterTest", () => {
         // Sum of exponents should be 3 + 5 + 1 (for instruction pointer)
         const totalExponent = input.factors.reduce((sum, f) => sum + f.exponent, 0);
         expect(totalExponent).toBe(9);
+      });
+    });
+  });
+
+  describe("TuringMachineToDeterministicLambdaCalculus", () => {
+    test("Positive - immediately accepting machine", () => {
+      const element = Converter.turingMachineToDeterministicLambdaCalculus();
+      const [blank, one] = TMSymbolFrom("0", "1");
+      const [q0] = TMStateFrom("q0");
+      // "one" is registered into the symbol set via a rule at q0 itself; since q0 is the accept
+      // state this rule is dead (real TM semantics never consult it), but it still needs to exist
+      // so that "one" is part of symbolSet and can legally appear in the input word below.
+      const ruleset = TMRuleSet.builder().state(q0).add(one, one, "R", q0).build();
+      const tm = new TuringMachine(blank, ruleset, q0, q0);
+
+      element.bind(tm.asTuple());
+
+      const lambda = element.asIndependantSystem()!;
+      lambda.start(element.interpretInput([[one], 0]));
+
+      while (!lambda.isStopped()) {
+        lambda.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(lambda.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.nowState).toBe(q0);
+      expect(interpretedConfig!.headPosition).toBe(0);
+      expect(interpretedConfig!.tape.read(0)).toBe(one);
+    });
+
+    test("Positive - single right move", () => {
+      const element = Converter.turingMachineToDeterministicLambdaCalculus();
+      const [blank, one] = TMSymbolFrom("0", "1");
+      const [q0, q1] = TMStateFrom("q0", "q1");
+      const ruleset = TMRuleSet.builder()
+        .state(q0)
+        .add(blank, blank, "R", q1)
+        .add(one, one, "R", q1)
+        .build();
+      const tm = new TuringMachine(blank, ruleset, q0, q1);
+
+      element.bind(tm.asTuple());
+
+      const lambda = element.asIndependantSystem()!;
+      lambda.start(element.interpretInput([[one, one], 0]));
+
+      while (!lambda.isStopped()) {
+        lambda.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(lambda.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.nowState).toBe(q1);
+      expect(interpretedConfig!.headPosition).toBe(1);
+      expect(interpretedConfig!.tape.read(0)).toBe(one);
+      expect(interpretedConfig!.tape.read(1)).toBe(one);
+    });
+
+    test("Positive - single left move with an empty left tape", () => {
+      const element = Converter.turingMachineToDeterministicLambdaCalculus();
+      const [blank, one] = TMSymbolFrom("0", "1");
+      const [q0, q1] = TMStateFrom("q0", "q1");
+      const ruleset = TMRuleSet.builder()
+        .state(q0)
+        .add(blank, blank, "L", q1)
+        .add(one, blank, "L", q1)
+        .build();
+      const tm = new TuringMachine(blank, ruleset, q0, q1);
+
+      element.bind(tm.asTuple());
+
+      const lambda = element.asIndependantSystem()!;
+      lambda.start(element.interpretInput([[one], 0]));
+
+      while (!lambda.isStopped()) {
+        lambda.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(lambda.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.nowState).toBe(q1);
+      expect(interpretedConfig!.headPosition).toBe(0);
+      expect(interpretedConfig!.tape.read(0)).toBe(blank);
+      expect(interpretedConfig!.tape.read(1)).toBe(blank);
+    });
+
+    test("Positive - four right moves, exhausting the right tape and re-fixing the theta recursion each step", () => {
+      const element = Converter.turingMachineToDeterministicLambdaCalculus();
+      const [blank, one] = TMSymbolFrom("0", "1");
+      const [q0, q1, q2, q3, q4] = TMStateFrom("q0", "q1", "q2", "q3", "q4");
+      const builder = TMRuleSet.builder();
+      [
+        [q0, q1],
+        [q1, q2],
+        [q2, q3],
+        [q3, q4],
+      ].forEach(([from, to]) => {
+        builder.state(from).add(blank, blank, "R", to).add(one, one, "R", to);
+      });
+      const ruleset = builder.build();
+      const tm = new TuringMachine(blank, ruleset, q0, q4);
+
+      element.bind(tm.asTuple());
+
+      const lambda = element.asIndependantSystem()!;
+      lambda.start(element.interpretInput([[one, one, one, one], 0]));
+
+      while (!lambda.isStopped()) {
+        lambda.proceed(1);
+      }
+
+      const interpretedConfig = element.interpretConfigration(lambda.getConfiguration());
+      expect(interpretedConfig).not.toBeNull();
+      expect(interpretedConfig!.nowState).toBe(q4);
+      expect(interpretedConfig!.headPosition).toBe(4);
+      expect(interpretedConfig!.tape.read(0)).toBe(one);
+      expect(interpretedConfig!.tape.read(1)).toBe(one);
+      expect(interpretedConfig!.tape.read(2)).toBe(one);
+      expect(interpretedConfig!.tape.read(3)).toBe(one);
+      expect(interpretedConfig!.tape.read(4)).toBe(blank);
+    });
+
+    describe("unit", () => {
+      test("bind() throws if acceptState is null", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank] = TMSymbolFrom("0");
+        const [q0] = TMStateFrom("q0");
+        const tm = new TuringMachine(blank, TMRuleSet.builder().build(), q0, null);
+
+        expect(() => element.bind(tm.asTuple())).toThrow();
+      });
+
+      test("bind() throws if a non-accept state has no rule for some symbol", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank, one] = TMSymbolFrom("0", "1");
+        const [q0, q1] = TMStateFrom("q0", "q1");
+        // "one" is registered into the symbol set via a (dead, since q1 is the accept state) rule
+        // at q1, but q0 has no rule for it, so the transition table is not total outside q1.
+        const ruleset = TMRuleSet.builder()
+          .state(q0)
+          .add(blank, blank, "R", q1)
+          .state(q1)
+          .add(one, one, "R", q1)
+          .build();
+        const tm = new TuringMachine(blank, ruleset, q0, q1);
+
+        expect(() => element.bind(tm.asTuple())).toThrow();
+      });
+
+      test("bind() throws if a non-accept state has ambiguous rules for some symbol", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank, one] = TMSymbolFrom("0", "1");
+        const [q0, q1] = TMStateFrom("q0", "q1");
+        const ruleset = TMRuleSet.builder()
+          .state(q0)
+          .add(blank, blank, "R", q1)
+          .add(one, blank, "R", q1)
+          .add(one, one, "L", q1)
+          .build();
+        const tm = new TuringMachine(blank, ruleset, q0, q1);
+
+        expect(() => element.bind(tm.asTuple())).toThrow();
+      });
+
+      test("bind() throws if a non-accept state has a HALT rule", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank, one] = TMSymbolFrom("0", "1");
+        const [q0, q1] = TMStateFrom("q0", "q1");
+        const ruleset = TMRuleSet.builder()
+          .state(q0)
+          .add(blank, blank, "R", q1)
+          .addHALT(one)
+          .build();
+        const tm = new TuringMachine(blank, ruleset, q0, q1);
+
+        expect(() => element.bind(tm.asTuple())).toThrow();
+      });
+
+      test("asTuple() / asIndependantSystem() / getTransFormLog() are null before bind()", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+
+        expect(element.asTuple()).toBeNull();
+        expect(element.asIndependantSystem()).toBeNull();
+        expect(element.getTransFormLog()).toBeNull();
+      });
+
+      test("asTuple() / asIndependantSystem() / getTransFormLog() are populated after bind()", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank] = TMSymbolFrom("0");
+        const [q0] = TMStateFrom("q0");
+        const tm = new TuringMachine(blank, TMRuleSet.builder().build(), q0, q0);
+
+        element.bind(tm.asTuple());
+
+        expect(element.asTuple()).toEqual({});
+        expect(element.asIndependantSystem()).toBeInstanceOf(DeterministicLambdaCalculus);
+
+        const log = element.getTransFormLog();
+        expect(log).not.toBeNull();
+        expect(log!.symbolCorrespondenceTable.map((row) => row.symbol)).toEqual([blank]);
+        expect(log!.stateCorrespondenceTable.map((row) => row.state)).toEqual([q0]);
+      });
+
+      test("interpretConfigration() returns null for a term that is not at a clean simulation point", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank] = TMSymbolFrom("0");
+        const [q0] = TMStateFrom("q0");
+        const tm = new TuringMachine(blank, TMRuleSet.builder().build(), q0, q0);
+
+        element.bind(tm.asTuple());
+
+        const [x] = LambdaVariableFrom("x");
+        const identityTerm = LambdaAbstraction(x, LambdaVariableTerm(x));
+
+        expect(element.interpretConfigration({ term: identityTerm })).toBeNull();
+      });
+
+      test("interpretConfigration() returns null when the driving system has not started", () => {
+        const element = Converter.turingMachineToDeterministicLambdaCalculus();
+        const [blank] = TMSymbolFrom("0");
+        const [q0] = TMStateFrom("q0");
+        const tm = new TuringMachine(blank, TMRuleSet.builder().build(), q0, q0);
+
+        element.bind(tm.asTuple());
+
+        expect(element.interpretConfigration(null)).toBeNull();
       });
     });
   });

@@ -255,6 +255,303 @@ export function collectVariableNames(term: LambdaTerm): Set<string> {
   return names;
 }
 
+/**
+ * A single lexical token produced by {@link tokenizeLambdaTerm}, consumed by
+ * {@link parseApplicationTokens} / {@link parseAtomTokens}.
+ *
+ * @remarks
+ * "λ" and "\" both tokenize to "lambda" (see {@link parseLambdaTerm} for why); the parser never
+ * needs to know which spelling was used.
+ */
+type LambdaToken =
+  | { readonly kind: "lambda" }
+  | { readonly kind: "dot" }
+  | { readonly kind: "lparen" }
+  | { readonly kind: "rparen" }
+  | { readonly kind: "ident"; readonly name: string };
+
+/**
+ * Splits "source" into a flat list of {@link LambdaToken}s for
+ * {@link parseApplicationTokens} / {@link parseAtomTokens} to consume.
+ *
+ * @remarks
+ * Whitespace is dropped here rather than kept as a token: it is never significant beyond acting
+ * as an application-argument separator, and that separation is already implied by two adjacent
+ * atom tokens with no explicit combinator between them, so no grammar rule needs to inspect how
+ * much whitespace (if any) actually appeared.
+ *
+ * @param source The lambda-term source text, as accepted by {@link parseLambdaTerm}.
+ * @returns The tokens found in "source", in order.
+ * @throws {Error} If "source" contains a character that cannot start any token (i.e. is not
+ *  whitespace, "λ", "\", ".", "(", ")", or a valid identifier character
+ *  "/[A-Za-z_][A-Za-z0-9_']*​/").
+ */
+function tokenizeLambdaTerm(source: string): LambdaToken[] {
+  const identPattern = /[A-Za-z_][A-Za-z0-9_']*/y;
+  const tokens: LambdaToken[] = [];
+  let i = 0;
+  while (i < source.length) {
+    const ch = source[i];
+    if (/\s/.test(ch)) {
+      i++;
+      continue;
+    }
+    if (ch === "λ" || ch === "\\") {
+      tokens.push({ kind: "lambda" });
+      i++;
+      continue;
+    }
+    if (ch === ".") {
+      tokens.push({ kind: "dot" });
+      i++;
+      continue;
+    }
+    if (ch === "(") {
+      tokens.push({ kind: "lparen" });
+      i++;
+      continue;
+    }
+    if (ch === ")") {
+      tokens.push({ kind: "rparen" });
+      i++;
+      continue;
+    }
+    identPattern.lastIndex = i;
+    const match = identPattern.exec(source);
+    if (match !== null) {
+      tokens.push({ kind: "ident", name: match[0] });
+      i += match[0].length;
+      continue;
+    }
+    throw new Error(`Unexpected character "${ch}" at position ${i} in lambda term source "${source}".`);
+  }
+  return tokens;
+}
+
+/** Whether "token" can begin an "atom" (see {@link parseLambdaTerm}), i.e. can start a new application argument. */
+function tokenStartsAtom(token: LambdaToken): boolean {
+  return token.kind === "ident" || token.kind === "lambda" || token.kind === "lparen";
+}
+
+/**
+ * What a name in {@link parseLambdaTerm}'s "bindings" argument may resolve to: either an existing
+ * variable to link an identifier (or, per {@link isLambdaTerm}, a matching abstraction parameter) to,
+ * or a whole term to splice in verbatim wherever that name appears as a plain identifier.
+ */
+type LambdaTermBinding = LambdaVariable | LambdaTerm;
+
+/**
+ * Distinguishes the two cases of {@link LambdaTermBinding}: a {@link LambdaTerm} always carries a
+ * "type" discriminant field, which a bare {@link LambdaVariable} never has.
+ *
+ * @param binding The binding to classify.
+ * @returns True if "binding" is a term to splice in, false if it is a variable to link to.
+ */
+function isLambdaTerm(binding: LambdaTermBinding): binding is LambdaTerm {
+  return "type" in binding;
+}
+
+/**
+ * Parses the "application" grammar rule (see {@link parseLambdaTerm}) starting at "pos": one atom
+ * followed by zero or more further atoms, left-associated into nested {@link LambdaApplication}s.
+ *
+ * @remarks
+ * "term := application" in the grammar (there is no separate case for a bare, non-applied term),
+ * so this doubles as the entry point for anywhere the grammar says "term", including
+ * {@link parseLambdaTerm} itself and an abstraction's body.
+ *
+ * @param tokens The full token list, as produced by {@link tokenizeLambdaTerm}.
+ * @param pos The index, into "tokens", to start parsing from.
+ * @param scope Every name currently bound by an enclosing abstraction, mapped to the
+ *  {@link LambdaVariable} it resolves to. Passed through unchanged to every atom parsed here.
+ * @param bindingCache Every name resolved so far during this call to {@link parseLambdaTerm} that
+ *  is not in "scope", mapped to the {@link LambdaTermBinding} it was resolved to: either a
+ *  caller-supplied entry from "bindings" (variable or term, see {@link parseLambdaTerm}), or a
+ *  freshly allocated free variable. Mutated in place by nested atom parsing so repeated occurrences
+ *  of the same undeclared free name, anywhere in "source", resolve to the same object.
+ * @returns The parsed term, and the index of the first unconsumed token.
+ * @throws {Error} If "pos" is not the start of at least one atom (e.g. "pos" is already at
+ *  "tokens.length", at ")", or at ".").
+ */
+function parseApplicationTokens(
+  tokens: LambdaToken[],
+  pos: number,
+  scope: ReadonlyMap<string, LambdaVariable>,
+  bindingCache: Map<string, LambdaTermBinding>
+): { term: LambdaTerm; pos: number } {
+  let { term, pos: nextPos } = parseAtomTokens(tokens, pos, scope, bindingCache);
+  while (nextPos < tokens.length && tokenStartsAtom(tokens[nextPos])) {
+    const argument = parseAtomTokens(tokens, nextPos, scope, bindingCache);
+    term = LambdaApplication(term, argument.term);
+    nextPos = argument.pos;
+  }
+  return { term, pos: nextPos };
+}
+
+/**
+ * Parses the "atom" grammar rule (see {@link parseLambdaTerm}) starting at "pos": a bare variable
+ * reference, a parenthesized term, or an abstraction.
+ *
+ * @remarks
+ * This is where identifiers actually get resolved: a name found in "scope" resolves to that
+ * binding (so a bound name always shadows a same-named entry elsewhere); otherwise it is looked up
+ * in "bindingCache" — spliced in verbatim if it resolves to a {@link LambdaTerm}, or wrapped as a
+ * reference if it resolves to a {@link LambdaVariable} — allocating (and caching) a fresh free
+ * variable on first sight of a name absent from both.
+ * @remarks
+ * For the abstraction case, the parameter reuses the {@link LambdaVariable} found in "bindingCache"
+ * under the same name, if any (this is what lets a term spliced in elsewhere, via "bindings", be
+ * correctly captured by a same-named binder here — see {@link parseLambdaTerm}); otherwise, and
+ * always when that name resolves to a {@link LambdaTerm} instead (splicing has no meaning at a
+ * binder position), a fresh {@link LambdaVariable} is allocated, exactly as if the name were
+ * unrecognized. Either way, the body is parsed via {@link parseApplicationTokens} with "scope"
+ * extended by that one binding — extended, not mutated in place, so returning from the body
+ * naturally reverts to the enclosing scope for whatever comes after, which is what makes shadowing
+ * resolve correctly without explicit push/pop bookkeeping.
+ *
+ * @param tokens The full token list, as produced by {@link tokenizeLambdaTerm}.
+ * @param pos The index, into "tokens", to start parsing an atom from.
+ * @param scope Every name currently bound by an enclosing abstraction, mapped to the
+ *  {@link LambdaVariable} it resolves to.
+ * @param bindingCache Every name resolved so far during this call to {@link parseLambdaTerm} that
+ *  is not in "scope", mapped to the {@link LambdaTermBinding} it was resolved to. Mutated in place
+ *  on first sight of a name absent from both "scope" and "bindingCache".
+ * @returns The parsed atom, and the index of the first unconsumed token.
+ * @throws {Error} If "pos" is not the start of a variable, a parenthesized term (missing closing
+ *  ")"), or a well-formed abstraction (missing parameter identifier or ".").
+ */
+function parseAtomTokens(
+  tokens: LambdaToken[],
+  pos: number,
+  scope: ReadonlyMap<string, LambdaVariable>,
+  bindingCache: Map<string, LambdaTermBinding>
+): { term: LambdaTerm; pos: number } {
+  const token = tokens[pos];
+  if (token === undefined) {
+    throw new Error("Unexpected end of input while parsing a lambda term.");
+  }
+
+  if (token.kind === "ident") {
+    const boundVariable = scope.get(token.name);
+    if (boundVariable !== undefined) {
+      return { term: LambdaVariableTerm(boundVariable), pos: pos + 1 };
+    }
+
+    const cached = bindingCache.get(token.name);
+    if (cached !== undefined) {
+      const term = isLambdaTerm(cached) ? cached : LambdaVariableTerm(cached);
+      return { term, pos: pos + 1 };
+    }
+
+    const fresh = LambdaVariableFrom(token.name)[0];
+    bindingCache.set(token.name, fresh);
+    return { term: LambdaVariableTerm(fresh), pos: pos + 1 };
+  }
+
+  if (token.kind === "lparen") {
+    const inner = parseApplicationTokens(tokens, pos + 1, scope, bindingCache);
+    const closing = tokens[inner.pos];
+    if (closing?.kind !== "rparen") {
+      throw new Error(`Expected ")" to close a parenthesized term, at token index ${inner.pos}.`);
+    }
+    return { term: inner.term, pos: inner.pos + 1 };
+  }
+
+  if (token.kind === "lambda") {
+    const paramToken = tokens[pos + 1];
+    if (paramToken?.kind !== "ident") {
+      throw new Error(`Expected a parameter name after "λ", at token index ${pos + 1}.`);
+    }
+    const dotToken = tokens[pos + 2];
+    if (dotToken?.kind !== "dot") {
+      throw new Error(`Expected "." after an abstraction's parameter, at token index ${pos + 2}.`);
+    }
+    const cached = bindingCache.get(paramToken.name);
+    const parameter =
+      cached !== undefined && !isLambdaTerm(cached) ? cached : LambdaVariableFrom(paramToken.name)[0];
+    const childScope = new Map(scope);
+    childScope.set(paramToken.name, parameter);
+    const body = parseApplicationTokens(tokens, pos + 3, childScope, bindingCache);
+    return { term: LambdaAbstraction(parameter, body.term), pos: body.pos };
+  }
+
+  throw new Error(`Unexpected token at index ${pos} while parsing a lambda term atom.`);
+}
+
+/**
+ * Parses "source" as a {@link LambdaTerm}, following the grammar:
+ * ```
+ * term        := application
+ * application := atom (WS atom)*        // left-associative juxtaposition
+ * atom        := variable | abstraction | '(' term ')'
+ * abstraction := ('λ' | '\') ident WS? '.' term   // body extends as far right as possible
+ * variable    := ident
+ * ident       := /[A-Za-z_][A-Za-z0-9_']*​/
+ * ```
+ *
+ * @remarks
+ * Application-argument separation requires at least one whitespace character (or a parenthesis)
+ * between atoms: since identifiers are tokenized by longest match, multi-character names like
+ * "x_0" would otherwise be indistinguishable from a run of juxtaposed single-letter variables
+ * (e.g. the paper-style shorthand "xxyz" for "x x y z"). Write such applications as "x x y z".
+ * @remarks
+ * Both "λ" and "\" are accepted as the abstraction binder, so ASCII-only sources can be written
+ * without the Greek letter.
+ * @remarks
+ * Every occurrence of a bound name resolves, within its binder's body, to one single
+ * {@link LambdaVariable} object — and a nested binder reusing the same name correctly shadows it
+ * (see {@link parseAtomTokens}) — so a term built by this function behaves identically, under
+ * {@link substitute} and beta reduction, to the same term built by hand with
+ * {@link LambdaAbstraction} / {@link LambdaApplication} / {@link LambdaVariableTerm}.
+ * @remarks
+ * Binding avoidance in this library is by object identity, not display name (see
+ * {@link LambdaVariable}). Consequently, splicing in a term whose free variables happen to share a
+ * display name with a binder somewhere in "source" does **not** capture them: that binder's
+ * parameter and the spliced term's free variable remain distinct objects unless "bindings" links
+ * them (see the "bindings" parameter below). This is usually what you want — it is exactly what
+ * prevents accidental capture — but it means a name used both as a splice point and, unrelatedly,
+ * as a binder elsewhere in "source" will not unify just because the text looks like it should.
+ * @remarks
+ * If the same name is passed in "bindings" as a {@link LambdaVariable} and "source" binds that name
+ * with more than one enclosing "λ" (e.g. "λs.λs. ..."), every one of those binders reuses the same
+ * object, so the inner one does not shadow the outer one the way two independently-allocated
+ * binders would. Avoid reusing one bindings name across nested binders in the same call.
+ *
+ * @param source The lambda-term source text to parse.
+ * @param bindings Maps a subset of "source"'s identifiers — every occurrence not bound by an
+ *  enclosing "λ" within "source" itself, plus (per the second remark above) any "λ" binder whose
+ *  parameter name matches a {@link LambdaVariable} entry — to either:
+ *  - a pre-existing {@link LambdaVariable}, reused by identity: an identifier resolves to a
+ *    reference to it, and a "λ" binder with the same parameter name reuses it as its own parameter
+ *    instead of allocating a fresh one (so a term spliced in elsewhere that already refers to this
+ *    variable is correctly captured by that binder);
+ *  - a whole {@link LambdaTerm}, spliced in verbatim wherever its name appears as a plain
+ *    identifier (never at a "λ" binder position, where splicing has no meaning — a fresh variable
+ *    is allocated there instead, as if the name were absent from "bindings").
+ *  A name absent from "bindings" is instead resolved to a freshly allocated free variable, shared
+ *  across every occurrence of that name within this one call but not with any other call to
+ *  "parseLambdaTerm".
+ * @returns The parsed term.
+ * @throws {Error} If "source" is not a well-formed "term" per the grammar above, or if it parses
+ *  a well-formed term but has leftover, unconsumed input afterward (e.g. "x)" or "x x)").
+ */
+export function parseLambdaTerm(
+  source: string,
+  bindings: Readonly<Record<string, LambdaVariable | LambdaTerm>> = {}
+): LambdaTerm {
+  const tokens = tokenizeLambdaTerm(source);
+  if (tokens.length === 0) {
+    throw new Error("Cannot parse an empty lambda term source.");
+  }
+
+  const bindingCache = new Map<string, LambdaTermBinding>(Object.entries(bindings));
+  const { term, pos } = parseApplicationTokens(tokens, 0, new Map(), bindingCache);
+  if (pos !== tokens.length) {
+    throw new Error(`Unexpected trailing input in lambda term source "${source}", at token index ${pos}.`);
+  }
+  return term;
+}
+
 export interface LambdaCalculusConfiguration { term: LambdaTerm }
 
 /**

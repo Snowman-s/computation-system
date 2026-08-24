@@ -7,6 +7,7 @@ import {
   LambdaVariableTerm,
   defaultAlphaConversionStrategy,
   lambdaTermToString,
+  parseLambdaTerm,
 } from "../src/computation-system";
 
 describe("LambdaCalculus", () => {
@@ -200,6 +201,162 @@ describe("defaultAlphaConversionStrategy", () => {
     const [x] = LambdaVariableFrom("x");
     const result = defaultAlphaConversionStrategy(x, new Set(["x", "x'"]));
     expect(result.value).toEqual("x''");
+  });
+});
+
+describe("parseLambdaTerm", () => {
+  it("parses a bare variable", () => {
+    const term = parseLambdaTerm("x");
+    expect(term.type).toEqual("variable");
+    expect(lambdaTermToString(term)).toEqual("x");
+  });
+
+  it("parses an abstraction", () => {
+    expect(lambdaTermToString(parseLambdaTerm("λx.x"))).toEqual("λx.x");
+  });
+
+  it("accepts \"\\\" as an alternative spelling of \"λ\"", () => {
+    expect(lambdaTermToString(parseLambdaTerm("\\x.x"))).toEqual(lambdaTermToString(parseLambdaTerm("λx.x")));
+  });
+
+  it("left-associates juxtaposed atoms as application: f x y", () => {
+    expect(lambdaTermToString(parseLambdaTerm("f x y"))).toEqual("((f x) y)");
+  });
+
+  it("lets parentheses override the default left-associativity: f (x y)", () => {
+    expect(lambdaTermToString(parseLambdaTerm("f (x y)"))).toEqual("(f (x y))");
+  });
+
+  it("lets an abstraction body extend as far right as possible: λx.f x", () => {
+    // Must parse as λx.(f x), not (λx.f) x.
+    expect(lambdaTermToString(parseLambdaTerm("λx.f x"))).toEqual("λx.(f x)");
+  });
+
+  it("is insensitive to incidental whitespace", () => {
+    expect(lambdaTermToString(parseLambdaTerm("  λ x . x  "))).toEqual(lambdaTermToString(parseLambdaTerm("λx.x")));
+  });
+
+  it("resolves every occurrence of a bound name to the same variable, so beta reduction substitutes correctly", () => {
+    const lc = new LambdaCalculus();
+    lc.start(parseLambdaTerm("(λx.x) y"));
+    lc.proceed(1);
+
+    expect(lambdaTermToString(lc.getConfiguration()!.term)).toEqual("y");
+  });
+
+  it("shadows an outer binder with an inner one reusing the same name: (λx.λx.x) a", () => {
+    // Same scenario as the hand-built "resolves shadowing correctly" test above: the inner "x"
+    // must not be substituted by the application to "a", since it refers to the inner binder.
+    const [a] = LambdaVariableFrom("a");
+    const lc = new LambdaCalculus();
+    lc.start(parseLambdaTerm("(λx.λx.x) a", { a }));
+    lc.proceed(1);
+
+    expect(lambdaTermToString(lc.getConfiguration()!.term)).toEqual("λx.x");
+  });
+
+  it("resolves a name declared in bindings to the given LambdaVariable object", () => {
+    const [y] = LambdaVariableFrom("y");
+    const lc = new LambdaCalculus();
+    lc.start(parseLambdaTerm("(λx.x) y", { y }));
+    lc.proceed(1);
+
+    const reduced = lc.getConfiguration()!.term;
+    expect(reduced.type).toEqual("variable");
+    if (reduced.type === "variable") {
+      expect(reduced.variable).toBe(y);
+    }
+  });
+
+  it("splices a LambdaTerm bound in bindings verbatim at an identifier position", () => {
+    const inner = parseLambdaTerm("f a");
+    const term = parseLambdaTerm("g inner", { inner });
+
+    expect(term.type).toEqual("application");
+    if (term.type === "application") {
+      expect(term.argument).toBe(inner);
+    }
+  });
+
+  it("reuses a bindings LambdaVariable as an abstraction's own parameter when its name matches the binder", () => {
+    const [s] = LambdaVariableFrom("s");
+    const term = parseLambdaTerm("λs.s", { s });
+
+    expect(term.type).toEqual("abstraction");
+    if (term.type === "abstraction") {
+      expect(term.parameter).toBe(s);
+    }
+  });
+
+  it("lets a spliced term's free variable be captured by a same-named binder reused via bindings", () => {
+    const [s, f, y] = LambdaVariableFrom("s", "f", "y");
+    const inner = LambdaApplication(LambdaVariableTerm(f), LambdaVariableTerm(s));
+    const abstraction = parseLambdaTerm("λs.inner", { s, inner });
+
+    const lc = new LambdaCalculus();
+    lc.start(LambdaApplication(abstraction, LambdaVariableTerm(y)));
+    lc.proceed(1);
+
+    expect(lambdaTermToString(lc.getConfiguration()!.term)).toEqual("(f y)");
+  });
+
+  it("does not capture a spliced term's free variable via an unrelated, unlinked same-named binder", () => {
+    const [s] = LambdaVariableFrom("s");
+    const inner = LambdaVariableTerm(s);
+    // "s" itself is deliberately not passed in bindings, only "inner" is.
+    const term = parseLambdaTerm("λs.inner", { inner });
+
+    expect(term.type).toEqual("abstraction");
+    if (term.type === "abstraction") {
+      expect(term.parameter).not.toBe(s);
+      expect(term.body).toBe(inner);
+    }
+  });
+
+  it("resolves repeated occurrences of an undeclared free name, within one call, to the same object", () => {
+    const term = parseLambdaTerm("x x");
+    expect(term.type).toEqual("application");
+    if (term.type === "application") {
+      expect(term.func.type).toEqual("variable");
+      expect(term.argument.type).toEqual("variable");
+      if (term.func.type === "variable" && term.argument.type === "variable") {
+        expect(term.func.variable).toBe(term.argument.variable);
+      }
+    }
+  });
+
+  it("does not share auto-created free variables across separate calls", () => {
+    const first = parseLambdaTerm("x");
+    const second = parseLambdaTerm("x");
+    expect(first.type).toEqual("variable");
+    expect(second.type).toEqual("variable");
+    if (first.type === "variable" && second.type === "variable") {
+      expect(first.variable).not.toBe(second.variable);
+    }
+  });
+
+  it("throws on an empty source", () => {
+    expect(() => parseLambdaTerm("")).toThrow();
+  });
+
+  it("throws on an unknown character", () => {
+    expect(() => parseLambdaTerm("x $ y")).toThrow();
+  });
+
+  it("throws on an unbalanced opening parenthesis", () => {
+    expect(() => parseLambdaTerm("(x")).toThrow();
+  });
+
+  it("throws on leftover input after a well-formed term", () => {
+    expect(() => parseLambdaTerm("x)")).toThrow();
+  });
+
+  it("throws on an abstraction missing its dot", () => {
+    expect(() => parseLambdaTerm("λx x")).toThrow();
+  });
+
+  it("throws on an abstraction missing its parameter", () => {
+    expect(() => parseLambdaTerm("λ.x")).toThrow();
   });
 });
 

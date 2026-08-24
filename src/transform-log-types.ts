@@ -85,3 +85,14 @@ export interface MinskyRegisterMachineToFractranTransformLog {
     readonly fracs: FractranFraction[];
   })[];
 }
+
+export interface TuringMachineToDeterministicLambdaCalculusTransformLog {
+  readonly symbolCorrespondenceTable: readonly {
+    readonly symbol: TMSymbol;
+    readonly index: number;
+  }[];
+  readonly stateCorrespondenceTable: readonly {
+    readonly state: TMState;
+    readonly index: number;
+  }[];
+}
