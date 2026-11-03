@@ -5,6 +5,7 @@ import {
   TuringMachine,
 } from "./turing-machine";
 import {
+  BalancedThreeStackMachine,
   ComputationSystem,
   DeterministicLambdaCalculus,
   Fractran,
@@ -19,6 +20,7 @@ import {
   TuringMachine2SymbolToMinskyRegisterMachineTransformLog,
   MinskyRegisterMachineToFractranTransformLog,
   TuringMachineToDeterministicLambdaCalculusTransformLog,
+  TuringMachineToBalancedThreeStackMachineTransformLog,
 } from "./transform-log-types";
 import { Tag2SystemToTuringMachine218TransformElement } from "./converters/tag2-system-to-turing-machine-218";
 import { TuringMachine2SymbolToWriteFirstTuringMachineTransformElement } from "./converters/turing-machine-2symbol-to-write-first-turing-machine";
@@ -27,6 +29,7 @@ import { TuringMachineTo2SymbolTransformElement } from "./converters/turing-mach
 import { TuringMachine2SymbolToMinskyRegisterMachineTransformElement } from "./converters/turing-machine-2symbol-to-minsky-register-machine";
 import { MinskyRegisterMachineToFractranTransformElement } from "./converters/minsky-register-machine-to-fractran";
 import { TuringMachineToDeterministicLambdaCalculusTransformElement } from "./converters/turing-machine-to-deterministic-lambda-calculus";
+import { TuringMachineToBalancedThreeStackMachineTransformElement } from "./converters/turing-machine-to-balanced-three-stack-machine";
 
 export class Converter {
   /* istanbul ignore next */
@@ -102,6 +105,17 @@ export class Converter {
     TuringMachineToDeterministicLambdaCalculusTransformLog
   > {
     return new TuringMachineToDeterministicLambdaCalculusTransformElement();
+  }
+
+  /**
+   * @see OpenAI. Incompressible Box Transport and Finite Computation. preprint, 2026. (Section 4)
+   */
+  public static turingMachineToBalancedThreeStackMachine(): ITransformElement<
+    TuringMachine,
+    BalancedThreeStackMachine,
+    TuringMachineToBalancedThreeStackMachineTransformLog
+  > {
+    return new TuringMachineToBalancedThreeStackMachineTransformElement();
   }
 }
 

@@ -6,6 +6,7 @@ export * from "./elementary-cellular-automaton";
 export * from "./write-first-turing-machine";
 export * from "./fractran";
 export * from "./minsky-register-machine";
+export * from "./balanced-three-stack-machine";
 export * from "./transform-log-types";
 export * from "./converter";
 

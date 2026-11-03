@@ -26,6 +26,7 @@ import {
   LambdaVariableFrom,
   LambdaAbstraction,
   LambdaVariableTerm,
+  TMConfiguration,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -1500,6 +1501,391 @@ describe("ConverterTest", () => {
         element.bind(tm.asTuple());
 
         expect(element.interpretConfigration(null)).toBeNull();
+      });
+    });
+  });
+
+  describe("TuringMachineToBalancedThreeStackMachine", () => {
+    const [blank, zero, one] = TMSymbolFrom("_", "0", "1");
+
+    // Interpreted configurations use a coordinate system local to the head, so tapes are compared around it.
+    const aroundHead = (config: TMConfiguration, radius: number): TMSymbol[] =>
+      Array.from({ length: 2 * radius + 1 }, (_, i) => config.tape.read(config.headPosition - radius + i));
+
+    // Increments a binary number whose most significant digit is at the head, then accepts in "done".
+    const createIncrementer = () => {
+      const [right, carry, done] = TMStateFrom("right", "carry", "done");
+      const ruleset = TMRuleSet.builder()
+        .state(right)
+        .add(zero, zero, "R")
+        .add(one, one, "R")
+        .add(blank, blank, "L", carry)
+        .state(carry)
+        .add(one, zero, "L")
+        .add(zero, one, "L", done)
+        .add(blank, one, "L", done)
+        .build();
+      return { tm: new TuringMachine(blank, ruleset, right, done), right, carry, done };
+    };
+
+    // Runs the Turing machine and the converted machine side by side,
+    // checking that every checkpoint of the latter agrees with the former.
+    const runInLockstep = (tm: TuringMachine, input: [TMSymbol[], number]) => {
+      const element = Converter.turingMachineToBalancedThreeStackMachine();
+      element.bind(tm.asTuple());
+      const machine = element.asIndependantSystem()!;
+      tm.start(input);
+      machine.start(element.interpretInput(input));
+
+      for (let tmStep = 0; tmStep < 1000; tmStep++) {
+        const expected = tm.getConfiguration()!;
+        const actual = element.interpretConfigration(machine.getConfiguration());
+        expect(actual).not.toBeNull();
+        expect(actual!.nowState).toBe(expected.nowState);
+        expect(aroundHead(actual!, 8)).toEqual(aroundHead(expected, 8));
+
+        if (machine.isStopped()) {
+          tm.proceed(1);
+          expect(tm.isStopped()).toBe(true);
+          return;
+        }
+        expect(tm.isStopped()).toBe(false);
+
+        tm.proceed(1);
+        let innerSteps = 0;
+        do {
+          machine.proceed(1);
+          innerSteps++;
+          expect(innerSteps).toBeLessThan(1000);
+        } while (element.interpretConfigration(machine.getConfiguration()) === null);
+      }
+      throw new Error("The Turing machine did not stop.");
+    };
+
+    describe("Lockstep with the Turing machine", () => {
+      test("Increment without carry beyond the word", () => {
+        runInLockstep(createIncrementer().tm, [[one, zero, one, one], 0]);
+      });
+
+      test("Increment with carry beyond the left end (left move with an empty left stack)", () => {
+        runInLockstep(createIncrementer().tm, [[one, one, one], 0]);
+      });
+
+      test("Head starts right of the word", () => {
+        runInLockstep(createIncrementer().tm, [[one, zero], 3]);
+      });
+
+      test("Head starts left of the word", () => {
+        runInLockstep(createIncrementer().tm, [[one, zero], -2]);
+      });
+
+      test("Empty word", () => {
+        runInLockstep(createIncrementer().tm, [[], 0]);
+      });
+
+      test("Stops at the state of a HALT rule", () => {
+        const [q0] = TMStateFrom("q0");
+        const ruleset = TMRuleSet.builder()
+          .state(q0)
+          .add(zero, zero, "R")
+          .addHALT(one)
+          .build();
+        runInLockstep(new TuringMachine(blank, ruleset, q0), [[zero, zero, one], 0]);
+      });
+    });
+
+    test("One step of the Turing machine takes 2m+2 steps", () => {
+      const [q0, q1] = TMStateFrom("q0", "q1");
+      const ruleset = TMRuleSet.builder().state(q0).add(one, one, "R", q1).build();
+      const element = Converter.turingMachineToBalancedThreeStackMachine();
+      element.bind(new TuringMachine(blank, ruleset, q0, q1).asTuple());
+      const machine = element.asIndependantSystem()!;
+      // m = 3: the head cell and the two cells right of it.
+      machine.start(element.interpretInput([[one, one, one], 0]));
+
+      machine.proceed(7);
+      expect(element.interpretConfigration(machine.getConfiguration())).toBeNull();
+      machine.proceed(1);
+      const config = element.interpretConfigration(machine.getConfiguration());
+      expect(config).not.toBeNull();
+      expect(config!.nowState).toBe(q1);
+      expect(aroundHead(config!, 2)).toEqual([blank, one, one, one, blank]);
+      expect(machine.getConfiguration()!.control).toBe(element.getTransFormLog()!.halt);
+      expect(machine.isStopped()).toBe(true);
+    });
+
+    test("Rules of the accept state are ignored", () => {
+      const [q0, q1] = TMStateFrom("q0", "q1");
+      const ruleset = TMRuleSet.builder()
+        .state(q0)
+        .add(one, one, "R", q1)
+        .state(q1)
+        .add(blank, one, "R", q0)
+        .build();
+      const element = Converter.turingMachineToBalancedThreeStackMachine();
+      element.bind(new TuringMachine(blank, ruleset, q0, q1).asTuple());
+      const machine = element.asIndependantSystem()!;
+      machine.start(element.interpretInput([[one], 0]));
+
+      machine.proceed(100);
+      expect(machine.isStopped()).toBe(true);
+      expect(machine.getConfiguration()!.control).toBe(element.getTransFormLog()!.halt);
+      expect(element.interpretConfigration(machine.getConfiguration())!.nowState).toBe(q1);
+    });
+
+    test("An undefined (state, symbol) pair leads to A_h without changing the tape", () => {
+      const [q0] = TMStateFrom("q0");
+      const ruleset = TMRuleSet.builder().state(q0).add(zero, zero, "R").build();
+      const element = Converter.turingMachineToBalancedThreeStackMachine();
+      element.bind(new TuringMachine(blank, ruleset, q0).asTuple());
+      const machine = element.asIndependantSystem()!;
+      // (q0, blank) is undefined.
+      machine.start(element.interpretInput([[zero], 0]));
+
+      // The move on "0" (m = 1) takes 4 steps, and the stationary step on the blank (m = 1) takes 4 steps.
+      machine.proceed(4);
+      expect(element.interpretConfigration(machine.getConfiguration())!.nowState).toBe(q0);
+      expect(machine.isStopped()).toBe(false);
+      machine.proceed(4);
+      expect(machine.isStopped()).toBe(true);
+      expect(machine.getConfiguration()!.control).toBe(element.getTransFormLog()!.halt);
+      const config = element.interpretConfigration(machine.getConfiguration())!;
+      expect(config.nowState).toBe(q0);
+      expect(config.tape.read(config.headPosition - 1)).toBe(zero);
+      expect(config.tape.read(config.headPosition)).toBe(blank);
+    });
+
+    test("Starts at A_h if the initial state is the accept state", () => {
+      const [q0] = TMStateFrom("q0");
+      const ruleset = TMRuleSet.builder().state(q0).add(one, zero, "R").build();
+      const element = Converter.turingMachineToBalancedThreeStackMachine();
+      element.bind(new TuringMachine(blank, ruleset, q0, q0).asTuple());
+      const machine = element.asIndependantSystem()!;
+      expect(element.asTuple()!.initControl).toBe(element.getTransFormLog()!.halt);
+
+      machine.start(element.interpretInput([[one], 0]));
+      expect(machine.isStopped()).toBe(true);
+      const config = element.interpretConfigration(machine.getConfiguration())!;
+      expect(config.nowState).toBe(q0);
+      expect(config.tape.read(config.headPosition)).toBe(one);
+    });
+
+    test("Works in a hierarchy", () => {
+      const { tm, done } = createIncrementer();
+      const hierarchy = createHierarchy(Converter.turingMachineToBalancedThreeStackMachine());
+      hierarchy.start(tm, [[one, one], 0]);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const config = hierarchy.getConfiguration(0)!;
+      expect(config.nowState).toBe(done);
+      // 11 + 1 = 100, where the head ends left of the carried digit.
+      expect(config.tape.read(config.headPosition)).toBe(blank);
+      expect(config.tape.read(config.headPosition + 1)).toBe(one);
+      expect(config.tape.read(config.headPosition + 2)).toBe(zero);
+      expect(config.tape.read(config.headPosition + 3)).toBe(zero);
+    });
+
+    describe("unit", () => {
+      test("asTuple() / asIndependantSystem() / getTransFormLog() are null before bind()", () => {
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        expect(element.asTuple()).toBeNull();
+        expect(element.asIndependantSystem()).toBeNull();
+        expect(element.getTransFormLog()).toBeNull();
+      });
+
+      test("interpretConfigration() returns null before bind()", () => {
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        expect(element.interpretConfigration(null)).toBeNull();
+      });
+
+      test("interpretInput() throws before bind()", () => {
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        expect(() => element.interpretInput([[one], 0])).toThrow();
+      });
+
+      test("bind() throws if a (state, symbol) pair has two or more rules", () => {
+        const [q0] = TMStateFrom("q0");
+        const ruleset = TMRuleSet.builder()
+          .state(q0)
+          .add(one, zero, "R")
+          .add(one, one, "R")
+          .build();
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        expect(() => element.bind(new TuringMachine(blank, ruleset, q0).asTuple())).toThrow();
+      });
+
+      test("bind() populates the correspondence tables", () => {
+        const [q0, q1] = TMStateFrom("q0", "q1");
+        // Uses symbols "_" and "1" only, so the alphabet has 2 symbols.
+        const ruleset = TMRuleSet.builder()
+          .state(q0)
+          .add(one, one, "R", q1)
+          .add(blank, one, "L", q1)
+          .build();
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        element.bind(new TuringMachine(blank, ruleset, q0, q1).asTuple());
+        const log = element.getTransFormLog()!;
+
+        expect(log.symbolCorrespondenceTable.map((row) => row.symbol)).toEqual(
+          expect.arrayContaining([blank, one])
+        );
+        expect(log.symbolCorrespondenceTable).toHaveLength(2);
+        // The accept state q1 is replaced by A_h.
+        expect(log.stateCorrespondenceTable.map((row) => row.state)).toEqual([q0]);
+
+        // A right move branches on what follows the head cell on R (each symbol or the boundary),
+        // and a left move on the top of L (each symbol).
+        const rightRecords = log.recordTable.filter((row) => row.rule.read === one);
+        const leftRecords = log.recordTable.filter((row) => row.rule.read === blank);
+        expect(rightRecords.map((row) => row.branch)).toEqual(
+          expect.arrayContaining([
+            { type: "symbol", symbol: blank },
+            { type: "symbol", symbol: one },
+            { type: "boundary" },
+          ])
+        );
+        expect(rightRecords).toHaveLength(3);
+        expect(leftRecords.map((row) => row.branch)).toEqual(
+          expect.arrayContaining([
+            { type: "symbol", symbol: blank },
+            { type: "symbol", symbol: one },
+          ])
+        );
+        expect(leftRecords).toHaveLength(2);
+        expect(new Set(log.recordTable.map((row) => row.record)).size).toBe(5);
+
+        const tuple = element.asTuple()!;
+        const letterOfBlank = log.symbolCorrespondenceTable.find((row) => row.symbol === blank)!.letter;
+        expect(tuple.blank).toBe(letterOfBlank);
+        expect(tuple.initControl).toBe(log.stateCorrespondenceTable.find((row) => row.state === q0)!.A);
+        expect(tuple.controlSet.has(log.halt)).toBe(true);
+      });
+
+      describe("Normalization to the single terminal control", () => {
+        // q0 has a HALT rule and an undefined pair, q1 moves into the accept state, and the accept state has a rule.
+        const [q0, q1, acc] = TMStateFrom("q0", "q1", "acc");
+        const createMixedMachine = () =>
+          new TuringMachine(
+            blank,
+            TMRuleSet.builder()
+              .state(q0)
+              .add(zero, zero, "R", q1)
+              .addHALT(one)
+              .state(q1)
+              .add(zero, one, "L", acc)
+              .add(one, one, "L", q0)
+              .add(blank, zero, "R", q0)
+              .state(acc)
+              .add(zero, zero, "R", q0)
+              .build(),
+            q0,
+            acc
+          );
+
+        test("A_h is the only control without outgoing rules", () => {
+          const element = Converter.turingMachineToBalancedThreeStackMachine();
+          element.bind(createMixedMachine().asTuple());
+          const tuple = element.asTuple()!;
+          const halt = element.getTransFormLog()!.halt;
+
+          expect(tuple.controlSet.has(halt)).toBe(true);
+          for (const control of tuple.controlSet) {
+            const hasOutgoingRule = tuple.rules.some((rule) => rule.fromControl === control);
+            expect(hasOutgoingRule).toBe(control !== halt);
+          }
+        });
+
+        test("HALT rules and undefined pairs are recorded as HALT rows", () => {
+          const element = Converter.turingMachineToBalancedThreeStackMachine();
+          element.bind(createMixedMachine().asTuple());
+          const log = element.getTransFormLog()!;
+
+          const haltRecords = log.recordTable.filter((row) => row.rule.out.move === "HALT");
+          expect(haltRecords.map((row) => [row.rule.nowState, row.rule.read])).toEqual(
+            expect.arrayContaining([
+              [q0, one],
+              [q0, blank],
+            ])
+          );
+          expect(haltRecords).toHaveLength(2);
+          expect(haltRecords.every((row) => row.branch === null)).toBe(true);
+          // The accept state has no controls, so its rule is not recorded.
+          expect(log.recordTable.some((row) => row.rule.nowState === acc)).toBe(false);
+          expect(log.stateCorrespondenceTable.some((row) => row.state === acc)).toBe(false);
+        });
+
+        test("Recovers the halting state from the record", () => {
+          // Undefined pairs are not run in lockstep, since TuringMachine throws on them.
+          runInLockstep(createMixedMachine(), [[zero, zero], 0]);
+          runInLockstep(createMixedMachine(), [[one], 0]);
+        });
+      });
+
+      test("interpretInput() expands the cells between the head and the word", () => {
+        const { tm } = createIncrementer();
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        element.bind(tm.asTuple());
+        const log = element.getTransFormLog()!;
+        const letter = (symbol: TMSymbol) =>
+          log.symbolCorrespondenceTable.find((row) => row.symbol === symbol)!.letter;
+        const [b, z, o, star] = [letter(blank), letter(zero), letter(one), log.boundary];
+
+        expect(element.interpretInput([[one, zero], 0])).toEqual([[], [o, z, star], []]);
+        expect(element.interpretInput([[one, zero], 1])).toEqual([[o], [z, star], []]);
+        expect(element.interpretInput([[one, zero], -2])).toEqual([[], [b, b, o, z, star], []]);
+        expect(element.interpretInput([[one, zero], 3])).toEqual([[b, z, o], [b, star], []]);
+        expect(element.interpretInput([[], 0])).toEqual([[], [b, star], []]);
+      });
+
+      test("interpretInput() throws if the word contains an unknown symbol", () => {
+        const { tm } = createIncrementer();
+        const [unknown] = TMSymbolFrom("x");
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        element.bind(tm.asTuple());
+        expect(() => element.interpretInput([[unknown], 0])).toThrow();
+      });
+
+      test("interpretConfigration() returns null if the top of J at A_h is not a record", () => {
+        const { tm } = createIncrementer();
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        element.bind(tm.asTuple());
+        const log = element.getTransFormLog()!;
+        const letter = (symbol: TMSymbol) =>
+          log.symbolCorrespondenceTable.find((row) => row.symbol === symbol)!.letter;
+
+        expect(
+          element.interpretConfigration({
+            control: log.halt,
+            stacks: [[], [letter(one), log.boundary], [letter(zero)]],
+          })
+        ).toBeNull();
+      });
+
+      test("interpretConfigration() returns null except at checkpoints", () => {
+        const { tm, right } = createIncrementer();
+        const element = Converter.turingMachineToBalancedThreeStackMachine();
+        element.bind(tm.asTuple());
+        const log = element.getTransFormLog()!;
+        const controls = log.stateCorrespondenceTable.find((row) => row.state === right)!;
+        const machine = element.asIndependantSystem()!;
+        machine.start(element.interpretInput([[one, one], 0]));
+
+        expect(element.interpretConfigration(null)).toBeNull();
+        expect(element.interpretConfigration(machine.getConfiguration())).not.toBeNull();
+        machine.proceed(1);
+        expect(machine.getConfiguration()!.control).toBe(controls.S);
+        expect(element.interpretConfigration(machine.getConfiguration())).toBeNull();
+        machine.proceed(2);
+        expect(machine.getConfiguration()!.control).toBe(controls.T);
+        expect(element.interpretConfigration(machine.getConfiguration())).toBeNull();
+        machine.proceed(2);
+        expect(machine.getConfiguration()!.control).toBe(controls.D);
+        expect(element.interpretConfigration(machine.getConfiguration())).toBeNull();
+        machine.proceed(1);
+        expect(machine.getConfiguration()!.control).toBe(controls.A);
       });
     });
   });
