@@ -1,0 +1,78 @@
+<!DOCTYPE html><html class="default" lang="en" data-base="../"><head><meta charset="utf-8"/><meta http-equiv="x-ua-compatible" content="IE=edge"/><title>parseLambdaTerm | computation-system</title><meta name="description" content="Documentation for computation-system"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="../assets/style.css"/><link rel="stylesheet" href="../assets/highlight.css"/><script defer src="../assets/main.js"></script><script async src="../assets/icons.js" id="tsd-icons-script"></script><script async src="../assets/search.js" id="tsd-search-script"></script><script async src="../assets/navigation.js" id="tsd-nav-script"></script><script async src="../assets/hierarchy.js" id="tsd-hierarchy-script"></script></head><body><script>document.documentElement.dataset.theme = localStorage.getItem("tsd-theme") || "os";document.body.style.display="none";setTimeout(() => window.app?app.showPage():document.body.style.removeProperty("display"),500)</script><header class="tsd-page-toolbar">
+<div class="tsd-toolbar-contents container"><a href="../index.html" class="title">computation-system</a>
+<div id="tsd-toolbar-links"></div><button id="tsd-search-trigger" class="tsd-widget" aria-label="Search"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-search"></use></svg></button><dialog id="tsd-search" aria-label="Search"><input role="combobox" id="tsd-search-input" aria-controls="tsd-search-results" aria-autocomplete="list" aria-expanded="true" autocapitalize="off" autocomplete="off" placeholder="Search the docs" maxLength="100"/>
+<ul role="listbox" id="tsd-search-results"></ul>
+<div id="tsd-search-status" aria-live="polite" aria-atomic="true">
+<div>Preparing search index...</div></div></dialog><a href="#" class="tsd-widget menu" id="tsd-toolbar-menu-trigger" data-toggle="menu" aria-label="Menu"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-menu"></use></svg></a></div></header>
+<div class="container container-main">
+<div class="col-content">
+<div class="tsd-page-title">
+<ul class="tsd-breadcrumb" aria-label="Breadcrumb">
+<li><a href="" aria-current="page">parseLambdaTerm</a></li></ul>
+<h1>Function parseLambdaTerm</h1></div>
+<section class="tsd-panel">
+<ul class="tsd-signatures">
+<li class="">
+<div class="tsd-signature tsd-anchor-link" id="parselambdaterm"><span class="tsd-kind-call-signature">parseLambdaTerm</span><span class="tsd-signature-symbol">(</span><br/>    <span class="tsd-kind-parameter">source</span><span class="tsd-signature-symbol">:</span> <span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span><br/>    <span class="tsd-kind-parameter">bindings</span><span class="tsd-signature-symbol">?:</span> <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <a href="../interfaces/LambdaVariable.html" class="tsd-signature-type tsd-kind-interface">LambdaVariable</a> <span class="tsd-signature-symbol">|</span> <a href="../types/LambdaTerm.html" class="tsd-signature-type tsd-kind-type-alias">LambdaTerm</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">,</span><br/><span class="tsd-signature-symbol">)</span><span class="tsd-signature-symbol">:</span> <a href="../types/LambdaTerm.html" class="tsd-signature-type tsd-kind-type-alias">LambdaTerm</a><a href="#parselambdaterm" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></div>
+<div class="tsd-description">
+<div class="tsd-comment tsd-typography"><p>Parses &quot;source&quot; as a <a href="../types/LambdaTerm.html" class="tsd-kind-type-alias">LambdaTerm</a>, following the grammar:</p>
+<pre><code><span class="hl-10">term</span><span class="hl-1">        := </span><span class="hl-2">application</span><br/><span class="hl-10">application</span><span class="hl-1"> := </span><span class="hl-6">atom</span><span class="hl-1"> (</span><span class="hl-7">WS</span><span class="hl-1"> </span><span class="hl-2">atom</span><span class="hl-1">)*        </span><span class="hl-4">// left-associative juxtaposition</span><br/><span class="hl-10">atom</span><span class="hl-1">        := </span><span class="hl-2">variable</span><span class="hl-1"> | </span><span class="hl-2">abstraction</span><span class="hl-1"> | </span><span class="hl-3">&#39;(&#39;</span><span class="hl-1"> </span><span class="hl-2">term</span><span class="hl-1"> </span><span class="hl-3">&#39;)&#39;</span><br/><span class="hl-10">abstraction</span><span class="hl-1"> := (</span><span class="hl-3">&#39;λ&#39;</span><span class="hl-1"> | </span><span class="hl-3">&#39;</span><span class="hl-11">\&#39;</span><span class="hl-3">) ident WS? &#39;</span><span class="hl-1">.</span><span class="hl-3">&#39; term   // body extends as far right as possibl</span><span class="hl-12">e</span><br/><span class="hl-2">variable</span><span class="hl-1">    := </span><span class="hl-2">ident</span><br/><span class="hl-2">ident</span><span class="hl-1">       :=</span><span class="hl-13"> /</span><span class="hl-14">[</span><span class="hl-13">A-Za-z_</span><span class="hl-14">][</span><span class="hl-13">A-Za-z0-9_&#39;</span><span class="hl-14">]</span><span class="hl-15">*</span><span class="hl-13">​/</span>
+</code><button>Copy</button></pre>
+
+</div>
+<div class="tsd-parameters">
+<h4 class="tsd-parameters-title">Parameters</h4>
+<ul class="tsd-parameter-list">
+<li><span><span class="tsd-kind-parameter">source</span>: <span class="tsd-signature-type">string</span></span>
+<div class="tsd-comment tsd-typography"><p>The lambda-term source text to parse.</p>
+</div></li>
+<li><span><span class="tsd-kind-parameter">bindings</span>: <span class="tsd-signature-type">Readonly</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">Record</span><span class="tsd-signature-symbol">&lt;</span><span class="tsd-signature-type">string</span><span class="tsd-signature-symbol">,</span> <a href="../interfaces/LambdaVariable.html" class="tsd-signature-type tsd-kind-interface">LambdaVariable</a> <span class="tsd-signature-symbol">|</span> <a href="../types/LambdaTerm.html" class="tsd-signature-type tsd-kind-type-alias">LambdaTerm</a><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol">&gt;</span><span class="tsd-signature-symbol"> = {}</span></span>
+<div class="tsd-comment tsd-typography"><p>Maps a subset of &quot;source&quot;'s identifiers — every occurrence not bound by an
+enclosing &quot;λ&quot; within &quot;source&quot; itself, plus (per the second remark above) any &quot;λ&quot; binder whose
+parameter name matches a <a href="../interfaces/LambdaVariable.html" class="tsd-kind-interface">LambdaVariable</a> entry — to either:</p>
+<ul>
+<li>a pre-existing <a href="../interfaces/LambdaVariable.html" class="tsd-kind-interface">LambdaVariable</a>, reused by identity: an identifier resolves to a
+reference to it, and a &quot;λ&quot; binder with the same parameter name reuses it as its own parameter
+instead of allocating a fresh one (so a term spliced in elsewhere that already refers to this
+variable is correctly captured by that binder);</li>
+<li>a whole <a href="../types/LambdaTerm.html" class="tsd-kind-type-alias">LambdaTerm</a>, spliced in verbatim wherever its name appears as a plain
+identifier (never at a &quot;λ&quot; binder position, where splicing has no meaning — a fresh variable
+is allocated there instead, as if the name were absent from &quot;bindings&quot;).
+A name absent from &quot;bindings&quot; is instead resolved to a freshly allocated free variable, shared
+across every occurrence of that name within this one call but not with any other call to
+&quot;parseLambdaTerm&quot;.</li>
+</ul>
+</div></li></ul></div>
+<h4 class="tsd-returns-title">Returns <a href="../types/LambdaTerm.html" class="tsd-signature-type tsd-kind-type-alias">LambdaTerm</a></h4><p>The parsed term.</p>
+
+<div class="tsd-comment tsd-typography">
+<div class="tsd-tag-remarks">
+<h4 class="tsd-anchor-link" id="remarks">Remarks<a href="#remarks" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>Application-argument separation requires at least one whitespace character (or a parenthesis)
+between atoms: since identifiers are tokenized by longest match, multi-character names like
+&quot;x_0&quot; would otherwise be indistinguishable from a run of juxtaposed single-letter variables
+(e.g. the paper-style shorthand &quot;xxyz&quot; for &quot;x x y z&quot;). Write such applications as &quot;x x y z&quot;.</p>
+</div>
+<div class="tsd-tag-throws">
+<h4 class="tsd-anchor-link" id="throws">Throws<a href="#throws" aria-label="Permalink" class="tsd-anchor-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><use href="../assets/icons.svg#icon-anchor"></use></svg></a></h4><p>If &quot;source&quot; is not a well-formed &quot;term&quot; per the grammar above, or if it parses
+a well-formed term but has leftover, unconsumed input afterward (e.g. &quot;x)&quot; or &quot;x x)&quot;).</p>
+</div></div><aside class="tsd-sources">
+<ul>
+<li>Defined in <a href="https://github.com/Snowman-s/computation-system/blob/b2913280e29e948cd3f89ba62084feac4dd6a3e9/src/lambda-calculus.ts#L538">lambda-calculus.ts:538</a></li></ul></aside></div></li></ul></section></div>
+<div class="col-sidebar">
+<div class="page-menu">
+<div class="tsd-navigation settings">
+<details class="tsd-accordion"><summary class="tsd-accordion-summary"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><use href="../assets/icons.svg#icon-chevronDown"></use></svg>
+<h3>Settings</h3></summary>
+<div class="tsd-accordion-details">
+<div class="tsd-filter-visibility"><span class="settings-label">Member Visibility</span>
+<ul id="tsd-filter-options">
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-protected" name="protected"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Protected</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-inherited" name="inherited" checked/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>Inherited</span></label></li>
+<li class="tsd-filter-item"><label class="tsd-filter-input"><input type="checkbox" id="tsd-filter-external" name="external"/><svg width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect class="tsd-checkbox-background" width="30" height="30" x="1" y="1" rx="6" fill="none"></rect><path class="tsd-checkbox-checkmark" d="M8.35422 16.8214L13.2143 21.75L24.6458 10.25" stroke="none" stroke-width="3.5" stroke-linejoin="round" fill="none"></path></svg><span>External</span></label></li></ul></div>
+<div class="tsd-theme-toggle"><label class="settings-label" for="tsd-theme">Theme</label><select id="tsd-theme"><option value="os">OS</option><option value="light">Light</option><option value="dark">Dark</option></select></div></div></details></div></div>
+<div class="site-menu">
+<nav class="tsd-navigation"><a href="../modules.html">computation-system</a>
+<ul class="tsd-small-nested-navigation" id="tsd-nav-container">
+<li>Loading...</li></ul></nav></div></div></div><footer>
+<p class="tsd-generator">Generated using <a href="https://typedoc.org/" target="_blank">TypeDoc</a></p></footer>
+<div class="overlay"></div></body></html>
