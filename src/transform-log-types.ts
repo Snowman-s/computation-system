@@ -10,6 +10,9 @@ import {
   TMRule,
   ThreeStackControl,
   ThreeStackLetter,
+  BalancedThreeStackRule,
+  AffinePiece,
+  Rational,
 } from "./computation-system";
 
 export interface Tag2SystemToTuringMachine218TransformLog {
@@ -158,5 +161,43 @@ export interface TuringMachineToBalancedThreeStackMachineTransformLog {
       | { readonly type: "boundary" }
       | null;
     readonly record: ThreeStackLetter;
+  }[];
+}
+
+/**
+ * The correspondence table produced by {@link BalancedThreeStackMachineToPiecewiseAffineMapTransformElement}.
+ *
+ * @remarks
+ * A configuration (s; L, R, J) is encoded as the point origin(s) + (e(L), e(R), e(J)),
+ * where e(ξ) = Σ_{j≥1} digit(ξ_j) base^(-j) for a stack ξ followed by infinitely many blank letters
+ * (Section 4 of the paper cited by the converter).
+ */
+export interface BalancedThreeStackMachineToPiecewiseAffineMapTransformLog {
+  /**
+   * The base of the encoding (B = 2|Σ|+1 in the paper, where Σ is the letter set).
+   */
+  readonly base: number;
+  /**
+   * The odd digit (1, 3, ..., 2|Σ|-1) of each letter.
+   * Even digits are left unused, so that stacks with different prefixes are encoded apart with a gap.
+   */
+  readonly letterDigitTable: readonly {
+    readonly letter: ThreeStackLetter;
+    readonly digit: number;
+  }[];
+  /**
+   * The origin (o_s in the paper) of each control. Every configuration of the control is in origin + (0, 1)^3.
+   * Controls without outgoing rules are placed at (0, 0, 0), (-4, 0, 0), ..., and the others at (4, 0, 0), (8, 0, 0), ...
+   */
+  readonly controlOriginTable: readonly {
+    readonly control: ThreeStackControl;
+    readonly origin: readonly Rational[];
+  }[];
+  /**
+   * The piece built from each rule: the boxes of all configurations starting with "pop" and with "push".
+   */
+  readonly ruleTable: readonly {
+    readonly rule: BalancedThreeStackRule;
+    readonly piece: AffinePiece;
   }[];
 }

@@ -7,6 +7,8 @@ export * from "./write-first-turing-machine";
 export * from "./fractran";
 export * from "./minsky-register-machine";
 export * from "./balanced-three-stack-machine";
+export * from "./rational";
+export * from "./piecewise-affine-map";
 export * from "./transform-log-types";
 export * from "./converter";
 

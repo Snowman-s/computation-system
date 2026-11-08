@@ -10,6 +10,7 @@ import {
   DeterministicLambdaCalculus,
   Fractran,
   MinskyRegisterMachine,
+  PiecewiseAffineMap,
   WriteFirstTuringMachine,
 } from "./computation-system";
 import {
@@ -21,6 +22,7 @@ import {
   MinskyRegisterMachineToFractranTransformLog,
   TuringMachineToDeterministicLambdaCalculusTransformLog,
   TuringMachineToBalancedThreeStackMachineTransformLog,
+  BalancedThreeStackMachineToPiecewiseAffineMapTransformLog,
 } from "./transform-log-types";
 import { Tag2SystemToTuringMachine218TransformElement } from "./converters/tag2-system-to-turing-machine-218";
 import { TuringMachine2SymbolToWriteFirstTuringMachineTransformElement } from "./converters/turing-machine-2symbol-to-write-first-turing-machine";
@@ -30,6 +32,7 @@ import { TuringMachine2SymbolToMinskyRegisterMachineTransformElement } from "./c
 import { MinskyRegisterMachineToFractranTransformElement } from "./converters/minsky-register-machine-to-fractran";
 import { TuringMachineToDeterministicLambdaCalculusTransformElement } from "./converters/turing-machine-to-deterministic-lambda-calculus";
 import { TuringMachineToBalancedThreeStackMachineTransformElement } from "./converters/turing-machine-to-balanced-three-stack-machine";
+import { BalancedThreeStackMachineToPiecewiseAffineMapTransformElement } from "./converters/balanced-three-stack-machine-to-piecewise-affine-map";
 
 export class Converter {
   /* istanbul ignore next */
@@ -116,6 +119,17 @@ export class Converter {
     TuringMachineToBalancedThreeStackMachineTransformLog
   > {
     return new TuringMachineToBalancedThreeStackMachineTransformElement();
+  }
+
+  /**
+   * @see OpenAI. Incompressible Box Transport and Finite Computation. preprint, 2026. (Section 4)
+   */
+  public static balancedThreeStackMachineToPiecewiseAffineMap(): ITransformElement<
+    BalancedThreeStackMachine,
+    PiecewiseAffineMap,
+    BalancedThreeStackMachineToPiecewiseAffineMapTransformLog
+  > {
+    return new BalancedThreeStackMachineToPiecewiseAffineMapTransformElement();
   }
 }
 

@@ -27,6 +27,12 @@ import {
   LambdaAbstraction,
   LambdaVariableTerm,
   TMConfiguration,
+  BalancedThreeStackMachine,
+  Rational,
+  RationalBox,
+  ThreeStackControlFrom,
+  ThreeStackLetterFrom,
+  ThreeStackWord,
 } from "../src/computation-system";
 
 describe("ConverterTest", () => {
@@ -1886,6 +1892,266 @@ describe("ConverterTest", () => {
         expect(element.interpretConfigration(machine.getConfiguration())).toBeNull();
         machine.proceed(1);
         expect(machine.getConfiguration()!.control).toBe(controls.A);
+      });
+    });
+  });
+
+  describe("BalancedThreeStackMachineToPiecewiseAffineMap", () => {
+    const [blank, zero, one] = TMSymbolFrom("_", "0", "1");
+    const q = (n: number, d = 1) => Rational.of(n, d);
+
+    // Increments a binary number whose most significant digit is at the head, then accepts in "done".
+    const createIncrementer = () => {
+      const [right, carry, done] = TMStateFrom("right", "carry", "done");
+      const ruleset = TMRuleSet.builder()
+        .state(right)
+        .add(zero, zero, "R")
+        .add(one, one, "R")
+        .add(blank, blank, "L", carry)
+        .state(carry)
+        .add(one, zero, "L")
+        .add(zero, one, "L", done)
+        .add(blank, one, "L", done)
+        .build();
+      return { tm: new TuringMachine(blank, ruleset, right, done), done };
+    };
+
+    // Converts a Turing machine into a balanced three-stack machine and then into a piecewise affine map.
+    const convert = (tm: TuringMachine, input: [TMSymbol[], number]) => {
+      const toStacks = Converter.turingMachineToBalancedThreeStackMachine();
+      toStacks.bind(tm.asTuple());
+      const element = Converter.balancedThreeStackMachineToPiecewiseAffineMap();
+      element.bind(toStacks.asTuple()!);
+      return { machine: toStacks.asIndependantSystem()!, element, stacks: toStacks.interpretInput(input) };
+    };
+
+    const volume = (box: RationalBox) => box.min.reduce((acc, min, j) => acc.mul(box.max[j].sub(min)), q(1));
+    const intersect = (a: RationalBox, b: RationalBox) =>
+      a.min.every((_, j) => a.min[j].compare(b.max[j]) <= 0 && b.min[j].compare(a.max[j]) <= 0);
+    const inObservationCube = (point: readonly Rational[]) =>
+      point.every((x) => q(-1).compare(x) < 0 && x.compare(q(2)) < 0);
+
+    // Letters are compared by identity, since different letters may have the same representation.
+    const expectSameStacks = (actual: readonly ThreeStackWord[], expected: readonly ThreeStackWord[]) => {
+      actual.forEach((word, j) => {
+        expect(word).toHaveLength(expected[j].length);
+        word.forEach((letter, i) => expect(letter).toBe(expected[j][i]));
+      });
+    };
+
+    // Runs the balanced three-stack machine and the converted map side by side, checking every step.
+    const runInLockstep = (tm: TuringMachine, input: [TMSymbol[], number]) => {
+      const { machine, element, stacks } = convert(tm, input);
+      const map = element.asIndependantSystem()!;
+      machine.start(stacks);
+      map.start(element.interpretInput(stacks));
+
+      for (let step = 0; step < 10000; step++) {
+        const expected = machine.getConfiguration()!;
+        const actual = element.interpretConfigration(map.getConfiguration());
+        expect(actual).not.toBeNull();
+        expect(actual!.control).toBe(expected.control);
+        expectSameStacks(actual!.stacks, expected.stacks);
+        expect(map.isStopped()).toBe(machine.isStopped());
+        if (machine.isStopped()) {
+          return;
+        }
+        machine.proceed(1);
+        map.proceed(1);
+      }
+      throw new Error("The machine did not stop.");
+    };
+
+    describe("Lockstep with the balanced three-stack machine", () => {
+      test("Increment without carry beyond the word", () => {
+        runInLockstep(createIncrementer().tm, [[one, zero, one, one], 0]);
+      });
+
+      test("Increment with carry beyond the left end", () => {
+        runInLockstep(createIncrementer().tm, [[one, one, one], 0]);
+      });
+
+      test("Empty word", () => {
+        runInLockstep(createIncrementer().tm, [[], 0]);
+      });
+    });
+
+    test("Every piece has determinant 1 (the source and target boxes have the same volume)", () => {
+      const { element } = convert(createIncrementer().tm, [[one], 0]);
+      for (const { source, target } of element.asTuple()!.pieces) {
+        expect(volume(target)).toEqual(volume(source));
+      }
+    });
+
+    test("Target boxes are pairwise disjoint", () => {
+      const { element } = convert(createIncrementer().tm, [[one], 0]);
+      const pieces = element.asTuple()!.pieces;
+      for (let i = 0; i < pieces.length; i++) {
+        for (let j = i + 1; j < pieces.length; j++) {
+          expect(intersect(pieces[i].target, pieces[j].target)).toBe(false);
+        }
+      }
+    });
+
+    test("The point enters (-1, 2)^3 exactly when the Turing machine halts (Theorem 4.1)", () => {
+      const { element, stacks } = convert(createIncrementer().tm, [[one, zero, one], 0]);
+      const map = element.asIndependantSystem()!;
+      map.start(element.interpretInput(stacks));
+      while (!map.isStopped()) {
+        expect(inObservationCube(map.getConfiguration()!.point)).toBe(false);
+        map.proceed(1);
+      }
+      expect(inObservationCube(map.getConfiguration()!.point)).toBe(true);
+    });
+
+    test("The point of a non-halting Turing machine stays out of (-1, 2)^3", () => {
+      const [q0] = TMStateFrom("q0");
+      const ruleset = TMRuleSet.builder().state(q0).add(blank, blank, "R").build();
+      const { element, stacks } = convert(new TuringMachine(blank, ruleset, q0), [[], 0]);
+      const map = element.asIndependantSystem()!;
+      map.start(element.interpretInput(stacks));
+      for (let step = 0; step < 300; step++) {
+        expect(map.isStopped()).toBe(false);
+        expect(inObservationCube(map.getConfiguration()!.point)).toBe(false);
+        map.proceed(1);
+      }
+    });
+
+    test("Works in a hierarchy", () => {
+      const { tm, done } = createIncrementer();
+      const hierarchy = createHierarchy(Converter.turingMachineToBalancedThreeStackMachine()).appendLastAndNewHierarchy(
+        Converter.balancedThreeStackMachineToPiecewiseAffineMap()
+      );
+      hierarchy.start(tm, [[one, one], 0]);
+
+      while (!hierarchy.stopped()) {
+        hierarchy.proceed(1);
+      }
+
+      const config = hierarchy.getConfiguration(0)!;
+      expect(config.nowState).toBe(done);
+      // 11 + 1 = 100, where the head ends left of the carried digit.
+      expect(config.tape.read(config.headPosition)).toBe(blank);
+      expect(config.tape.read(config.headPosition + 1)).toBe(one);
+      expect(config.tape.read(config.headPosition + 2)).toBe(zero);
+      expect(config.tape.read(config.headPosition + 3)).toBe(zero);
+      expect(inObservationCube(hierarchy.getConfiguration(2)!.point)).toBe(true);
+    });
+
+    describe("unit", () => {
+      const [c0, c1, c2] = ThreeStackControlFrom("c0", "c1", "c2");
+      const [z, a] = ThreeStackLetterFrom("z", "a");
+      const E: ThreeStackWord = [];
+      // letterSet is [z, a] (the blank first), so the digits are z = 1, a = 3 and the base is 5.
+      // controlSet is [c0, c1]: c0 has an outgoing rule (index 1), c1 has none (index 0).
+      const createMachine = () =>
+        new BalancedThreeStackMachine(z, [{ fromControl: c0, pop: [[a], E, E], toControl: c1, push: [E, [a], E] }], c0);
+
+      const bound = () => {
+        const element = Converter.balancedThreeStackMachineToPiecewiseAffineMap();
+        element.bind(createMachine().asTuple());
+        return element;
+      };
+
+      test("asTuple() / asIndependantSystem() / getTransFormLog() / interpretConfigration() are null before bind()", () => {
+        const element = Converter.balancedThreeStackMachineToPiecewiseAffineMap();
+        expect(element.asTuple()).toBeNull();
+        expect(element.asIndependantSystem()).toBeNull();
+        expect(element.getTransFormLog()).toBeNull();
+        expect(element.interpretConfigration({ point: [q(0), q(0), q(0)] })).toBeNull();
+      });
+
+      test("interpretInput() throws before bind()", () => {
+        const element = Converter.balancedThreeStackMachineToPiecewiseAffineMap();
+        expect(() => element.interpretInput([E, E, E])).toThrow();
+      });
+
+      test("interpretInput() throws for a letter not in the letter set", () => {
+        const [unknown] = ThreeStackLetterFrom("unknown");
+        expect(() => bound().interpretInput([[unknown], E, E])).toThrow(/letter/i);
+      });
+
+      test("Transform log", () => {
+        const log = bound().getTransFormLog()!;
+        expect(log.base).toBe(5);
+        expect(log.letterDigitTable).toEqual([
+          { letter: z, digit: 1 },
+          { letter: a, digit: 3 },
+        ]);
+        expect(log.controlOriginTable).toEqual([
+          { control: c0, origin: [q(4), q(0), q(0)] },
+          { control: c1, origin: [q(0), q(0), q(0)] },
+        ]);
+        expect(log.ruleTable).toHaveLength(1);
+        expect(log.ruleTable[0].piece).toEqual({
+          source: { min: [q(23, 5), q(0), q(0)], max: [q(24, 5), q(1), q(1)] },
+          target: { min: [q(0), q(3, 5), q(0)], max: [q(1), q(4, 5), q(1)] },
+        });
+      });
+
+      test("Exact codes of the initial point and of the next step", () => {
+        const element = bound();
+        // e(b^∞) = 1 / (5 - 1) = 1/4, e(a b^∞) = (3 + 1/4) / 5 = 13/20.
+        const point = element.interpretInput([[a], E, E]);
+        expect(point).toEqual([q(93, 20), q(1, 4), q(1, 4)]);
+
+        const map = element.asIndependantSystem()!;
+        map.start(point);
+        map.proceed(1);
+        expect(map.getConfiguration()!.point).toEqual([q(1, 4), q(13, 20), q(1, 4)]);
+        expect(map.isStopped()).toBe(true);
+      });
+
+      test("Trailing blanks of the input are not distinguished", () => {
+        const element = bound();
+        expect(element.interpretInput([[a, z, z], [z], E])).toEqual(element.interpretInput([[a], E, E]));
+      });
+
+      test("interpretConfigration() decodes a code into normalized stacks", () => {
+        const element = bound();
+        const config = element.interpretConfigration({ point: element.interpretInput([[a, z, a, z], [z], E]) })!;
+        expect(config.control).toBe(c0);
+        expectSameStacks(config.stacks, [[a, z, a], E, E]);
+      });
+
+      test("Controls without outgoing rules are placed at non-positive origins", () => {
+        const machine = new BalancedThreeStackMachine(
+          z,
+          [
+            { fromControl: c0, pop: [[a], E, E], toControl: c1, push: [E, [a], E] },
+            { fromControl: c0, pop: [[z], E, E], toControl: c2, push: [E, [z], E] },
+          ],
+          c0
+        );
+        const element = Converter.balancedThreeStackMachineToPiecewiseAffineMap();
+        element.bind(machine.asTuple());
+        expect(element.getTransFormLog()!.controlOriginTable).toEqual([
+          { control: c0, origin: [q(4), q(0), q(0)] },
+          { control: c1, origin: [q(0), q(0), q(0)] },
+          { control: c2, origin: [q(-4), q(0), q(0)] },
+        ]);
+
+        const map = element.asIndependantSystem()!;
+        map.start(element.interpretInput([[z, a], E, E]));
+        map.proceed(1);
+        const config = element.interpretConfigration(map.getConfiguration())!;
+        expect(config.control).toBe(c2);
+        expectSameStacks(config.stacks, [[a], E, E]);
+      });
+
+      test("interpretConfigration() returns null for points that are not codes", () => {
+        const element = bound();
+        expect(element.interpretConfigration(null)).toBeNull();
+        // Wrong dimension.
+        expect(element.interpretConfigration({ point: [q(93, 20), q(1, 4)] })).toBeNull();
+        // No control at index 25.
+        expect(element.interpretConfigration({ point: [q(100), q(1, 4), q(1, 4)] })).toBeNull();
+        // 0 starts with the digit 0, which is not the digit of a letter.
+        expect(element.interpretConfigration({ point: [q(93, 20), q(0), q(1, 4)] })).toBeNull();
+        // 1/3 = 0.131313... in base 5 never reaches the blank tail.
+        expect(element.interpretConfigration({ point: [q(93, 20), q(1, 3), q(1, 4)] })).toBeNull();
+        // The last coordinate is also decoded.
+        expect(element.interpretConfigration({ point: [q(93, 20), q(1, 4), q(0)] })).toBeNull();
       });
     });
   });
