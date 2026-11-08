@@ -3,7 +3,7 @@ import commonjs from "@rollup/plugin-commonjs";
 import sourceMaps from "rollup-plugin-sourcemaps";
 import typescript from "rollup-plugin-typescript2";
 import json from "@rollup/plugin-json";
-import { terser } from "rollup-plugin-terser";
+import terser from "@rollup/plugin-terser";
 import { createRequire } from "node:module";
 
 // Rollup 4 はこの設定ファイルを ESM として読み込むため、
