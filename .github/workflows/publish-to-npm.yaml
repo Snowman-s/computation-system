@@ -8,33 +8,29 @@ jobs:
   publish-to-npm:
     runs-on: ubuntu-latest
     permissions:
+      # semantic-release のリリースコミット・タグ push と GitHub Release 作成、gh-pages への push のため
       contents: write
+      # @semantic-release/github がリリースに含まれる issue / PR にコメントするため
+      issues: write
+      pull-requests: write
+      # npm の Trusted Publishing (OIDC) でトークンなしに publish するため
+      id-token: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Use Node.js And Setup .npmrc
+      - name: Use Node.js
         uses: actions/setup-node@v4
         with:
           # rollup.config.ts を Node の型ストリップで読み込むためと、semantic-release 25 の要求 (>= 24.10) のため 24 系を使う
           node-version: "24.x"
-          registry-url: "https://registry.npmjs.org"
-          always-auth: true
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
       - name: Install
         run: npm install
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
       - name: Build
         run: npm run build
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
       - name: Test
         run: npm run test
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
       - name: Pages
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.ref == 'refs/heads/release' }}
@@ -44,5 +40,4 @@ jobs:
       - name: Release
         run: npx semantic-release
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NODE_AUTH_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
