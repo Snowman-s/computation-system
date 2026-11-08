@@ -17,7 +17,8 @@ jobs:
       - name: Use Node.js And Setup .npmrc
         uses: actions/setup-node@v4
         with:
-          node-version: "20.x"
+          # rollup.config.ts を Node の型ストリップで読み込むためと、semantic-release 25 の要求 (>= 24.10) のため 24 系を使う
+          node-version: "24.x"
           registry-url: "https://registry.npmjs.org"
           always-auth: true
         env:
